@@ -1,0 +1,27 @@
+{
+	"/": [
+		"src/routes/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/resources/new": [
+		"src/routes/+layout.ts"
+	],
+	"/resources/[id]": [
+		"src/routes/+layout.ts"
+	],
+	"/resources/[id]/edit": [
+		"src/routes/+layout.ts"
+	],
+	"/resources/[id]/notes/new": [
+		"src/routes/+layout.ts"
+	],
+	"/resources/[id]/notes/[nid]": [
+		"src/routes/+layout.ts"
+	],
+	"/resources/[id]/notes/[nid]/edit": [
+		"src/routes/+layout.ts"
+	],
+	"/search": [
+		"src/routes/+layout.ts"
+	]
+}

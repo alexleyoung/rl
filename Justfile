@@ -18,6 +18,15 @@ bundle:
     ./node_modules/.bin/esbuild cm-build/build.js --bundle --format=iife \
         --outfile=static/codemirror.bundle.js --minify
 
+# Run Svelte client dev server
+client:
+    cd client && bun run dev
+
+# Run server + client in parallel (prefer two terminals: just server + just client)
+dev:
+    DATABASE_URL={{db}} cargo run -p rl-server &
+    (cd client && bun run dev); kill %1 2>/dev/null || true
+
 # Run migrations against the local DB
 migrate:
     DATABASE_URL={{db}} cargo sqlx migrate run
@@ -30,5 +39,6 @@ prepare:
 types:
     DATABASE_URL={{db}} cargo test -p rl-server export_bindings_
 
-# Full rebuild: bundle JS then build Rust
-all: bundle build
+# Full rebuild: types + server + client
+all: types build
+    cd client && bun install --frozen-lockfile && bun run build
