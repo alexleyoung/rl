@@ -9,11 +9,12 @@ import type { TagDto } from './types/TagDto';
 import type { SearchResponseDto } from './types/SearchResponseDto';
 import type { ApiErrorDto } from './types/ApiErrorDto';
 import type { UploadResponseDto } from './types/UploadResponseDto';
+import type { SetTagsDto } from './types/SetTagsDto';
 
 export type {
   ResourceDto, ResourceInputDto, ResourceDetailDto,
   NoteDto, NoteInputDto, NoteLocationDto,
-  QuickSetDto, TagDto, SearchResponseDto, ApiErrorDto, UploadResponseDto,
+  QuickSetDto, SetTagsDto, TagDto, SearchResponseDto, ApiErrorDto, UploadResponseDto,
 };
 
 const BASE = '/api/v1';
@@ -62,6 +63,9 @@ export const api = {
 
   quickSet: (id: number, body: QuickSetDto) =>
     req<ResourceDto>(`/resources/${id}/quick-set`, { method: 'POST', body: JSON.stringify(body) }),
+
+  setTags: (id: number, tags: string[]) =>
+    req<ResourceDto>(`/resources/${id}/tags`, { method: 'POST', body: JSON.stringify({ tags } satisfies SetTagsDto) }),
 
   fileUrl: (id: number) => `${BASE}/resources/${id}/file`,
 

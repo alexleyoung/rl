@@ -54,6 +54,12 @@ pub struct QuickSetDto {
     pub value: Option<String>,
 }
 
+#[derive(Debug, Deserialize, TS)]
+#[ts(export, export_to = "client/src/lib/types/")]
+pub struct SetTagsDto {
+    pub tags: Vec<String>,
+}
+
 #[derive(Debug, Serialize, TS)]
 #[ts(export, export_to = "client/src/lib/types/")]
 pub struct NoteDto {

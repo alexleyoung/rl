@@ -3,6 +3,7 @@
   import { page } from '$app/state';
   import { api, type ResourceDto, type NoteDto } from '$lib/api';
   import FileDropInput from '$lib/FileDropInput.svelte';
+  import TagsInput from '$lib/TagsInput.svelte';
 
   const rid = $derived(Number(page.params.id));
   let resource = $state<ResourceDto | null>(null);
@@ -58,6 +59,13 @@
       resource = await api.quickSet(rid, { field: 'file_path', value: path || undefined });
     } catch (e: any) { error = e.message; }
   }
+
+  async function saveTags(newTags: string[]) {
+    if (!resource) return;
+    try {
+      resource = await api.setTags(rid, newTags);
+    } catch (e: any) { error = e.message; }
+  }
 </script>
 
 {#if error}<p class="flash err">{error}</p>{/if}
@@ -94,9 +102,16 @@
         />
       </span>
     </div>
-    {#if resource.tags.length}
-      <div class="meta-row"><span class="key">tags</span><span>{resource.tags.join(', ')}</span></div>
-    {/if}
+    <div class="meta-row">
+      <span class="key">tags</span>
+      <span class="tags-wrap">
+        <TagsInput
+          bind:tags={resource.tags}
+          onchange={saveTags}
+          placeholder="add tag…"
+        />
+      </span>
+    </div>
   </div>
 
   <div class="row-actions mb">
@@ -168,4 +183,5 @@
   .inline-form input[type="url"] { flex: 1; }
 
   .file-drop-wrap { flex: 1; }
+  .tags-wrap { flex: 1; }
 </style>

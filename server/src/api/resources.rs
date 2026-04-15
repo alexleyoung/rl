@@ -7,7 +7,7 @@ use axum::{
 use serde::Deserialize;
 
 use crate::{
-    api::dto::{NoteDto, QuickSetDto, ResourceDetailDto, ResourceDto, ResourceInputDto},
+    api::dto::{NoteDto, QuickSetDto, ResourceDetailDto, ResourceDto, ResourceInputDto, SetTagsDto},
     error::AppError,
     indexing::{pdf as pdf_indexer, url as url_indexer},
     models::{note, resource},
@@ -141,6 +141,22 @@ pub async fn quick_set(
         }
         other => return Err(AppError::Validation(format!("unknown field: {other}"))),
     }
+    let r = resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
+    let tags = resource::get_tags(&s.pool, id).await?;
+    Ok(Json(ResourceDto::from_parts(r, tags)))
+}
+
+pub async fn set_tags(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+    Json(input): Json<SetTagsDto>,
+) -> Result<Json<ResourceDto>, AppError> {
+    resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
+    let tags: Vec<String> = input.tags.iter()
+        .map(|t| t.trim().to_lowercase())
+        .filter(|t| !t.is_empty())
+        .collect();
+    resource::set_tags(&s.pool, id, &tags).await?;
     let r = resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
     let tags = resource::get_tags(&s.pool, id).await?;
     Ok(Json(ResourceDto::from_parts(r, tags)))

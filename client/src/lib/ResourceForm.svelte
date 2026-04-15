@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ResourceDto, ResourceInputDto } from '$lib/api';
   import FileDropInput from '$lib/FileDropInput.svelte';
+  import TagsInput from '$lib/TagsInput.svelte';
 
   interface Props {
     initial?: ResourceDto | null;
@@ -15,7 +16,7 @@
   let author = $state('');
   let url = $state('');
   let file_path = $state('');
-  let tagsStr = $state('');
+  let tags = $state<string[]>([]);
   let error = $state('');
   let saving = $state(false);
 
@@ -27,7 +28,7 @@
       author = initial.author ?? '';
       url = initial.url ?? '';
       file_path = initial.file_path ?? '';
-      tagsStr = (initial.tags ?? []).join(', ');
+      tags = initial.tags ?? [];
     }
   });
 
@@ -37,7 +38,6 @@
     error = '';
     saving = true;
     try {
-      const tags = tagsStr.split(',').map(s => s.trim()).filter(Boolean);
       await onsubmit({
         kind,
         title: title.trim(),
@@ -84,8 +84,8 @@
     <FileDropInput bind:value={file_path} />
   </div>
   <div>
-    <label for="tags">tags (comma-separated)</label>
-    <input id="tags" type="text" bind:value={tagsStr} placeholder="algorithms, systems" />
+    <label>tags</label>
+    <TagsInput bind:tags />
   </div>
   <div class="row-actions">
     <button type="submit" class="primary" disabled={saving}>{saving ? 'saving…' : submitLabel}</button>

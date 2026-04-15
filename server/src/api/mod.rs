@@ -24,6 +24,7 @@ pub fn router() -> Router<AppState> {
         .route("/resources",                  get(resources::list).post(resources::create))
         .route("/resources/:id",              get(resources::show).patch(resources::update).delete(resources::delete))
         .route("/resources/:id/quick-set",    post(resources::quick_set))
+        .route("/resources/:id/tags",         post(resources::set_tags))
         .route("/resources/:id/file",         get(files::serve))
         .route("/resources/:rid/notes",       get(notes::list).post(notes::create))
         .route("/resources/:rid/notes/:nid",  get(notes::show).patch(notes::update).delete(notes::delete))
