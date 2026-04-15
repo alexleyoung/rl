@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, resource_id, title, body_md, body_html, updated_at\n         FROM notes WHERE resource_id=? ORDER BY updated_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "resource_id",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "body_md",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "body_html",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 5,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cd8b08638d1ef630143a2814571b3cb0389033af789423bb6b48138f6a5d01b8"
+}

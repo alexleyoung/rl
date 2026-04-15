@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT r.id, r.kind, r.title, r.author, r.url, r.file_path, r.added_at\n         FROM resources r\n         JOIN resource_tags rt ON rt.resource_id = r.id\n         JOIN tags t ON t.id = rt.tag_id\n         WHERE t.name = ? COLLATE NOCASE\n         ORDER BY r.added_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "kind",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "author",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "url",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_path",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "added_at",
+        "ordinal": 6,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "1ece7cd562bde9b1c1ad71c40f4d67e4f03df9b159d3596706c226e8de1603a0"
+}

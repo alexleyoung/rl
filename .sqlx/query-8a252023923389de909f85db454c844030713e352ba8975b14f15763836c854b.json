@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT t.name FROM tags t\n         JOIN resource_tags rt ON rt.tag_id = t.id\n         WHERE rt.resource_id = ?\n         ORDER BY t.name",
+  "describe": {
+    "columns": [
+      {
+        "name": "name",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8a252023923389de909f85db454c844030713e352ba8975b14f15763836c854b"
+}

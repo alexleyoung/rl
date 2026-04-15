@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR IGNORE INTO resource_tags (resource_id, tag_id)\n             SELECT ?, id FROM tags WHERE name=?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "c82c4313093a7440bde0515c3208dfe9eebac6fb60594592aa310f161fae351d"
+}

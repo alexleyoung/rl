@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE notes SET title=?, body_md=?, body_html=?, updated_at=unixepoch()\n         WHERE id=?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "04b2ab82214676bdb6e5326bf5aada161a52b4eeb3e5e5556754118ab610c43b"
+}

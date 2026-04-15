@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO notes (resource_id, title, body_md, body_html, updated_at)\n         VALUES (?, ?, ?, ?, unixepoch()) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9554a11c8f2d3146a755a3024eb12c7fdf766d4e4260b3e6019879cf42b047c2"
+}
