@@ -1,8 +1,14 @@
 mod db;
 mod error;
+mod handlers;
+mod markdown;
 mod models;
+mod views;
 
-use axum::{Router, routing::get};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -24,7 +30,23 @@ async fn main() {
     tracing::info!("database ready");
 
     let app = Router::new()
-        .route("/", get(|| async { "rl" }))
+        // Static assets
+        .route("/static/*path", get(handlers::static_files::serve_static))
+        // Resources
+        .route("/", get(handlers::resources::list))
+        .route("/resources/new", get(handlers::resources::new_form))
+        .route("/resources", post(handlers::resources::create))
+        .route("/resources/:id", get(handlers::resources::show))
+        .route("/resources/:id/edit", get(handlers::resources::edit_form).post(handlers::resources::update))
+        .route("/resources/:id/delete", post(handlers::resources::delete))
+        // Notes
+        .route("/resources/:rid/notes/new", get(handlers::notes::new_form))
+        .route("/resources/:rid/notes", post(handlers::notes::create))
+        .route("/resources/:rid/notes/:nid", get(handlers::notes::show))
+        .route("/resources/:rid/notes/:nid/edit", get(handlers::notes::edit_form).post(handlers::notes::update))
+        .route("/resources/:rid/notes/:nid/delete", post(handlers::notes::delete))
+        // Search
+        .route("/search", get(handlers::search::search_page))
         .with_state(pool);
 
     let bind =

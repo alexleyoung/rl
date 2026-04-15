@@ -47,6 +47,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # PDF extraction
 pdf-extract = "0.7"
 
+# MIME type guessing
+mime_guess = "2"
+
+# URL encoding for query strings
+urlencoding = "2"
+
 [profile.release]
 opt-level = 3
 lto = true
