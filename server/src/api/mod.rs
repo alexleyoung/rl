@@ -4,6 +4,7 @@ pub mod notes;
 pub mod resources;
 pub mod search;
 pub mod tags;
+pub mod upload;
 
 use axum::{
     routing::{get, post},
@@ -29,5 +30,6 @@ pub fn router() -> Router<AppState> {
         .route("/notes/:nid",                 get(notes::locate))
         .route("/search",                     get(search::search))
         .route("/tags",                       get(tags::list))
+        .route("/upload",                     post(upload::upload))
         .layer(cors)
 }

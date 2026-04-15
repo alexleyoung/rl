@@ -2,21 +2,22 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { api, type ResourceDto, type NoteDto } from '$lib/api';
+  import FileDropInput from '$lib/FileDropInput.svelte';
 
   const rid = $derived(Number(page.params.id));
   let resource = $state<ResourceDto | null>(null);
   let notes = $state<NoteDto[]>([]);
   let error = $state('');
-  let quickField = $state<'url'|'file_path'>('url');
   let quickValue = $state('');
   let quickSaving = $state(false);
+  let editingUrl = $state(false);
+  let urlInput = $state<HTMLInputElement | null>(null);
 
   async function load() {
     try {
       const detail = await api.getResource(rid);
       resource = detail.resource;
       notes = detail.notes;
-      quickValue = resource.url ?? resource.file_path ?? '';
     } catch (e: any) { error = e.message; }
   }
 
@@ -34,13 +35,28 @@
     notes = notes.filter(n => Number(n.id) !== nid);
   }
 
-  async function saveQuickSet() {
+  async function saveUrl() {
     if (!resource) return;
     quickSaving = true;
     try {
-      resource = await api.quickSet(rid, { field: quickField, value: quickValue || undefined });
+      resource = await api.quickSet(rid, { field: 'url', value: quickValue || undefined });
+      editingUrl = false;
     } catch (e: any) { error = e.message; }
     finally { quickSaving = false; }
+  }
+
+  function startEditUrl() {
+    quickValue = resource?.url ?? '';
+    editingUrl = true;
+    // focus after DOM update
+    setTimeout(() => urlInput?.focus(), 0);
+  }
+
+  async function saveFilePath(path: string) {
+    if (!resource) return;
+    try {
+      resource = await api.quickSet(rid, { field: 'file_path', value: path || undefined });
+    } catch (e: any) { error = e.message; }
   }
 </script>
 
@@ -52,33 +68,35 @@
   <div class="meta">
     <div class="meta-row"><span class="key">kind</span><span class="kind">{resource.kind}</span></div>
     {#if resource.author}<div class="meta-row"><span class="key">author</span><span>{resource.author}</span></div>{/if}
-    {#if resource.url}
-      <div class="meta-row">
-        <span class="key">url</span>
-        <a href={resource.url} target="_blank" rel="noreferrer">{resource.url}</a>
-      </div>
-    {/if}
-    {#if resource.file_path}
-      <div class="meta-row">
-        <span class="key">file</span>
-        <a href={api.fileUrl(rid)} target="_blank">{resource.file_path}</a>
-      </div>
-    {/if}
+    <div class="meta-row">
+      <span class="key">url</span>
+      {#if editingUrl}
+        <form class="inline-form" onsubmit={(e) => { e.preventDefault(); saveUrl(); }}>
+          <input bind:this={urlInput} type="url" bind:value={quickValue} placeholder="https://…" />
+          <button type="submit" disabled={quickSaving}>{quickSaving ? '…' : 'set'}</button>
+          <button type="button" onclick={() => { editingUrl = false; }}>cancel</button>
+        </form>
+      {:else if resource.url}
+        <a href={resource.url} target="_blank" rel="noreferrer" onclick={(e) => { if (e.altKey) { e.preventDefault(); startEditUrl(); } }}>{resource.url}</a>
+        <button class="inline-edit" type="button" onclick={startEditUrl}>edit</button>
+      {:else}
+        <button class="unset-link" type="button" onclick={startEditUrl}>set url…</button>
+      {/if}
+    </div>
+    <div class="meta-row">
+      <span class="key">file</span>
+      <span class="file-drop-wrap">
+        <FileDropInput
+          bind:value={resource.file_path as string}
+          placeholder="drag file here or click to browse"
+          onchange={saveFilePath}
+          fileUrl={resource.file_path ? api.fileUrl(rid) : undefined}
+        />
+      </span>
+    </div>
     {#if resource.tags.length}
       <div class="meta-row"><span class="key">tags</span><span>{resource.tags.join(', ')}</span></div>
     {/if}
-  </div>
-
-  <!-- Quick-set URL or file path -->
-  <div class="mb">
-    <form style="flex-direction:row; gap:0.5rem; align-items:center;" onsubmit={(e) => { e.preventDefault(); saveQuickSet(); }}>
-      <select bind:value={quickField} style="width:auto;">
-        <option value="url">url</option>
-        <option value="file_path">file</option>
-      </select>
-      <input type="text" bind:value={quickValue} placeholder="set value…" />
-      <button type="submit" disabled={quickSaving}>{quickSaving ? '…' : 'set'}</button>
-    </form>
   </div>
 
   <div class="row-actions mb">
@@ -112,3 +130,42 @@
     <a href="/resources/{rid}/notes/new" class="btn primary">+ note</a>
   </div>
 {/if}
+
+<style>
+  .unset-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--dim);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .unset-link:hover { color: var(--fg); }
+
+  .inline-edit {
+    background: none;
+    border: none;
+    padding: 0 0 0 0.5rem;
+    font: inherit;
+    font-size: 0.8em;
+    color: var(--dim);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    opacity: 0;
+  }
+  .meta-row:hover .inline-edit { opacity: 1; }
+
+  .inline-form {
+    display: flex;
+    flex-direction: row;
+    gap: 0.4rem;
+    align-items: center;
+    flex: 1;
+  }
+  .inline-form input[type="url"] { flex: 1; }
+
+  .file-drop-wrap { flex: 1; }
+</style>

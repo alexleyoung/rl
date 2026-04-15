@@ -8,11 +8,12 @@ import type { QuickSetDto } from './types/QuickSetDto';
 import type { TagDto } from './types/TagDto';
 import type { SearchResponseDto } from './types/SearchResponseDto';
 import type { ApiErrorDto } from './types/ApiErrorDto';
+import type { UploadResponseDto } from './types/UploadResponseDto';
 
 export type {
   ResourceDto, ResourceInputDto, ResourceDetailDto,
   NoteDto, NoteInputDto, NoteLocationDto,
-  QuickSetDto, TagDto, SearchResponseDto, ApiErrorDto,
+  QuickSetDto, TagDto, SearchResponseDto, ApiErrorDto, UploadResponseDto,
 };
 
 const BASE = '/api/v1';
@@ -89,4 +90,17 @@ export const api = {
   // Search
   search: (q: string, limit?: number) =>
     req<SearchResponseDto>(`/search?q=${encodeURIComponent(q)}${limit ? `&limit=${limit}` : ''}`),
+
+  // Upload a file, returns the server-side absolute path
+  uploadFile: async (file: File): Promise<UploadResponseDto> => {
+    const form = new FormData();
+    form.append('file', file);
+    const r = await fetch(`${BASE}/upload`, { method: 'POST', body: form });
+    if (!r.ok) {
+      let code = 'internal', message = `HTTP ${r.status}`;
+      try { const err: ApiErrorDto = await r.json(); code = err.code; message = err.message; } catch {}
+      throw new ApiError(r.status, code, message);
+    }
+    return r.json();
+  },
 };

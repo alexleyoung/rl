@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ResourceDto, ResourceInputDto } from '$lib/api';
+  import FileDropInput from '$lib/FileDropInput.svelte';
 
   interface Props {
     initial?: ResourceDto | null;
@@ -79,8 +80,8 @@
     <input id="url" type="url" bind:value={url} />
   </div>
   <div>
-    <label for="file_path">file path</label>
-    <input id="file_path" type="text" bind:value={file_path} placeholder="/path/to/file.pdf" />
+    <label for="file_path">file</label>
+    <FileDropInput bind:value={file_path} />
   </div>
   <div>
     <label for="tags">tags (comma-separated)</label>

@@ -50,7 +50,12 @@ async fn main() {
         }
     };
 
-    let state = AppState { pool, embedder };
+    let upload_dir = std::env::var("UPLOAD_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("./data/files"));
+    std::fs::create_dir_all(&upload_dir).ok();
+
+    let state = AppState { pool, embedder, upload_dir };
 
     let app = Router::new()
         .nest("/api/v1", api::router())
