@@ -1,0 +1,53 @@
+[package]
+name = "rl"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "rl"
+path = "src/main.rs"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["multipart"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite"] }
+
+# Templating
+maud = { version = "0.26", features = ["axum"] }
+
+# Markdown
+pulldown-cmark = "0.11"
+
+# Static assets
+rust-embed = "8"
+
+# Config
+dotenvy = "0.15"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# PDF extraction
+pdf-extract = "0.7"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
