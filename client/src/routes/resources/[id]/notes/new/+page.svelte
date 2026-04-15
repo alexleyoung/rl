@@ -1,7 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { api, type NoteInputDto } from '$lib/api';
+  import { api } from '$lib/api';
+  import Editor from '$lib/Editor.svelte';
 
   const rid = $derived(Number(page.params.id));
   let title = $state('');
@@ -21,23 +22,33 @@
       saving = false;
     }
   }
+
+  async function saveAndClose() {
+    await save();
+  }
 </script>
 
 <h1>new note</h1>
 
 {#if error}<p class="flash err">{error}</p>{/if}
 
-<form onsubmit={(e) => { e.preventDefault(); save(); }}>
+<form onsubmit={(e) => { e.preventDefault(); save(); }} style="gap:0.5rem;">
   <div>
     <label for="title">title *</label>
     <input id="title" type="text" bind:value={title} />
   </div>
-  <div>
-    <label for="body">body (markdown)</label>
-    <textarea id="body" rows={16} bind:value={body_md}></textarea>
-  </div>
   <div class="row-actions">
-    <button type="submit" class="primary" disabled={saving}>{saving ? 'saving…' : 'save'}</button>
-    <a href="/resources/{rid}" class="btn">cancel</a>
+    <button type="submit" class="primary" disabled={saving}>{saving ? 'saving…' : 'save (:w)'}</button>
+    <a href="/resources/{rid}" class="btn">cancel (:q)</a>
   </div>
 </form>
+
+<div class="mt">
+  <Editor
+    value={body_md}
+    onsave={(_v) => { body_md = _v; save(); }}
+    oncancel={() => goto(`/resources/${rid}`)}
+    onsaveAndClose={(_v) => { body_md = _v; saveAndClose(); }}
+    onchange={(v) => { body_md = v; }}
+  />
+</div>
