@@ -7,6 +7,7 @@ pub mod tags;
 pub mod upload;
 
 use axum::{
+    extract::DefaultBodyLimit,
     routing::{get, post},
     Router,
 };
@@ -32,6 +33,6 @@ pub fn router() -> Router<AppState> {
         .route("/notes/:nid",                 get(notes::locate))
         .route("/search",                     get(search::search))
         .route("/tags",                       get(tags::list))
-        .route("/upload",                     post(upload::upload))
+        .route("/upload",                     post(upload::upload).layer(DefaultBodyLimit::disable()))
         .layer(cors)
 }
