@@ -6,3 +6,12 @@
 .DS_Store
 .env
 /data
+node_modules/
+cm-build/node_modules/
+
+
+# Added by cargo
+#
+# already existing elements were commented out
+
+#/target
