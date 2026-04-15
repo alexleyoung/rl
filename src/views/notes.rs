@@ -12,7 +12,6 @@ pub fn new_page(r: &Resource) -> Markup {
         }
         h1 { "new note" }
 
-        // Title input — always visible
         div.mb {
             input #note-title-input type="text" value="Untitled"
                 placeholder="title"
@@ -20,50 +19,30 @@ pub fn new_page(r: &Resource) -> Markup {
                 autocomplete="off";
         }
 
-        // CodeMirror mounts here
         div #editor-wrap {
             div #cm-container {}
         }
 
         div.row-actions.mt {
-            button.primary onclick="saveNote()" type="button" { ":w save" }
+            button.primary onclick="window._doSave()" type="button" { ":w save" }
             a.btn href=(back_url) { "cancel" }
-        }
-
-        // Save form — outside editor container so display:none never blocks submit
-        form #note-save-form method="post" action=(create_url) style="display:none" {
-            input type="hidden" name="title" id="note-title-hidden" value="Untitled";
-            input type="hidden" name="body_md" id="note-body-md";
-            input type="hidden" name="body_html" id="note-body-html";
         }
 
         script src="/static/codemirror.bundle.js" {}
         script {
-            (PreEscaped(r#"
-// Sync title input → hidden field
-document.getElementById('note-title-input').addEventListener('input', function() {
-    document.getElementById('note-title-hidden').value = this.value;
-});
+            (PreEscaped(format!(r#"
+window.addEventListener('rl:exitEdit', function() {{
+    window.location.href = {back};
+}});
 
-function saveNote() {
-    var view = window._cmView;
-    if (!view) return;
-    document.getElementById('note-body-md').value = view.state.doc.toString();
-    document.getElementById('note-body-html').value = '';
-    document.getElementById('note-title-hidden').value =
-        document.getElementById('note-title-input').value || 'Untitled';
-    document.getElementById('note-save-form').submit();
-}
-
-window.addEventListener('rl:exitEdit', function() {
-    window.location.href = document.querySelector('a.dim').href;
-});
-
-window.addEventListener('DOMContentLoaded', function() {
-    window.initEditor('cm-container', '');
+window.addEventListener('DOMContentLoaded', function() {{
+    window.initEditor('cm-container', '', {save_url});
     if (window._cmView) window._cmView.focus();
-});
-"#))
+}});
+"#,
+                back     = serde_json::to_string(&back_url).unwrap(),
+                save_url = serde_json::to_string(&create_url).unwrap(),
+            )))
         }
     })
 }
@@ -80,7 +59,7 @@ pub fn view_page(r: &Resource, note: &Note) -> Markup {
 
         // Rendered view
         div #note-rendered {
-            h1 #note-title-display { (note.title) }
+            h1 { (note.title) }
             div.note-body {
                 (PreEscaped(&note.body_html))
             }
@@ -89,19 +68,16 @@ pub fn view_page(r: &Resource, note: &Note) -> Markup {
 
         // Editor — hidden by default
         div #note-editor style="display:none" {
-            // Title edit
             div.mb {
                 input #note-title-input type="text" value=(note.title)
                     style="font-size:1.1rem;border:none;border-bottom:1px solid var(--border);width:100%;outline:none;background:transparent;"
-                    autocomplete="off"
-                    oninput="document.getElementById('note-title-hidden').value=this.value";
+                    autocomplete="off";
             }
-            // CodeMirror mounts here
             div #editor-wrap {
                 div #cm-container {}
             }
             div.row-actions.mt {
-                button.primary onclick="saveNote()" type="button" { ":w save" }
+                button.primary onclick="window._doSave()" type="button" { ":w save" }
                 button onclick="exitEdit()" type="button" { "cancel" }
                 form method="post" action=(del_url) style="display:inline" {
                     button.danger type="submit"
@@ -110,25 +86,17 @@ pub fn view_page(r: &Resource, note: &Note) -> Markup {
             }
         }
 
-        // Save form is OUTSIDE both containers so display:none never blocks submit
-        form #note-save-form method="post" action=(edit_url) style="display:none" {
-            input type="hidden" name="title" id="note-title-hidden" value=(note.title);
-            input type="hidden" name="body_md" id="note-body-md";
-            input type="hidden" name="body_html" id="note-body-html";
-        }
-
         script src="/static/codemirror.bundle.js" {}
         script {
             (PreEscaped(format!(r#"
 var _editorInit = false;
-var _initialMd = {md};
 
 function enterEdit() {{
     document.getElementById('note-rendered').style.display = 'none';
     document.getElementById('note-editor').style.display = '';
     if (!_editorInit) {{
         _editorInit = true;
-        window.initEditor('cm-container', _initialMd);
+        window.initEditor('cm-container', {md}, {edit_url});
     }}
     if (window._cmView) window._cmView.focus();
 }}
@@ -138,14 +106,7 @@ function exitEdit() {{
     document.getElementById('note-rendered').style.display = '';
 }}
 
-function saveNote() {{
-    var view = window._cmView;
-    if (!view) return;
-    document.getElementById('note-body-md').value = view.state.doc.toString();
-    document.getElementById('note-body-html').value = '';
-    document.getElementById('note-save-form').submit();
-}}
-
+// :q exits edit mode; :w/:wq navigates away (server redirects back here)
 window.addEventListener('rl:exitEdit', exitEdit);
 
 document.addEventListener('keydown', function(e) {{
@@ -161,14 +122,15 @@ document.addEventListener('keydown', function(e) {{
     }}
 }});
 "#,
-                md = serde_json::to_string(&note.body_md).unwrap()
+                md       = serde_json::to_string(&note.body_md).unwrap(),
+                edit_url = serde_json::to_string(&edit_url).unwrap(),
             )))
         }
     })
 }
 
 pub fn edit_page(r: &Resource, note: &Note) -> Markup {
-    // Plain fallback (no-JS) — kept for completeness
+    // Plain fallback (no-JS)
     page(&format!("edit — {}", note.title), html! {
         h1 { "edit note" }
         form method="post" action=(format!("/resources/{}/notes/{}/edit", r.id, note.id)) {
