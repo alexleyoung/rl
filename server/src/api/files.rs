@@ -6,7 +6,7 @@ use axum::{
 };
 use tokio_util::io::ReaderStream;
 
-use crate::{error::AppError, models::resource, state::AppState};
+use crate::{error::AppError, models::resource::{self, touch_last_read}, state::AppState};
 
 pub async fn serve(
     State(s): State<AppState>,
@@ -14,6 +14,9 @@ pub async fn serve(
 ) -> Result<Response, AppError> {
     let r = resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
     let fp = r.file_path.ok_or(AppError::NotFound)?;
+    // Record access time (fire-and-forget)
+    let pool2 = s.pool.clone();
+    tokio::spawn(async move { let _ = touch_last_read(&pool2, id).await; });
 
     let file = tokio::fs::File::open(&fp)
         .await

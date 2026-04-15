@@ -67,6 +67,9 @@ export const api = {
   setTags: (id: number, tags: string[]) =>
     req<ResourceDto>(`/resources/${id}/tags`, { method: 'POST', body: JSON.stringify({ tags } satisfies SetTagsDto) }),
 
+  markRead: (id: number) =>
+    req<void>(`/resources/${id}/read`, { method: 'POST' }),
+
   fileUrl: (id: number) => `${BASE}/resources/${id}/file`,
 
   // Notes

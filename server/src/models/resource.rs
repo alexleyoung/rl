@@ -10,6 +10,7 @@ pub struct Resource {
     pub url: Option<String>,
     pub file_path: Option<String>,
     pub added_at: i64,
+    pub last_read_at: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -24,7 +25,7 @@ pub struct ResourceInput {
 
 pub async fn list(pool: &SqlitePool) -> sqlx::Result<Vec<Resource>> {
     sqlx::query_as!(Resource,
-        "SELECT id, kind, title, author, url, file_path, added_at
+        "SELECT id, kind, title, author, url, file_path, added_at, last_read_at
          FROM resources ORDER BY added_at DESC"
     )
     .fetch_all(pool)
@@ -33,7 +34,7 @@ pub async fn list(pool: &SqlitePool) -> sqlx::Result<Vec<Resource>> {
 
 pub async fn get(pool: &SqlitePool, id: i64) -> sqlx::Result<Option<Resource>> {
     sqlx::query_as!(Resource,
-        "SELECT id, kind, title, author, url, file_path, added_at
+        "SELECT id, kind, title, author, url, file_path, added_at, last_read_at
          FROM resources WHERE id = ?",
         id
     )
@@ -105,10 +106,17 @@ pub async fn set_tags(pool: &SqlitePool, resource_id: i64, tags: &[String]) -> s
     Ok(())
 }
 
+pub async fn touch_last_read(pool: &SqlitePool, id: i64) -> sqlx::Result<()> {
+    sqlx::query!("UPDATE resources SET last_read_at = unixepoch() WHERE id = ?", id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
 // For tag-filter on list
 pub async fn list_by_tag(pool: &SqlitePool, tag: &str) -> sqlx::Result<Vec<Resource>> {
     sqlx::query_as!(Resource,
-        "SELECT r.id, r.kind, r.title, r.author, r.url, r.file_path, r.added_at
+        "SELECT r.id, r.kind, r.title, r.author, r.url, r.file_path, r.added_at, r.last_read_at
          FROM resources r
          JOIN resource_tags rt ON rt.resource_id = r.id
          JOIN tags t ON t.id = rt.tag_id

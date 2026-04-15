@@ -146,6 +146,15 @@ pub async fn quick_set(
     Ok(Json(ResourceDto::from_parts(r, tags)))
 }
 
+pub async fn mark_read(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, AppError> {
+    resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
+    resource::touch_last_read(&s.pool, id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub async fn set_tags(
     State(s): State<AppState>,
     Path(id): Path<i64>,

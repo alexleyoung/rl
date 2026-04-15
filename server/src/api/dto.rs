@@ -13,6 +13,7 @@ pub struct ResourceDto {
     pub url: Option<String>,
     pub file_path: Option<String>,
     pub added_at: i64,
+    pub last_read_at: Option<i64>,
     pub tags: Vec<String>,
 }
 
@@ -26,6 +27,7 @@ impl ResourceDto {
             url: r.url,
             file_path: r.file_path,
             added_at: r.added_at,
+            last_read_at: r.last_read_at,
             tags,
         }
     }

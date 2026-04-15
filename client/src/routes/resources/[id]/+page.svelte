@@ -85,7 +85,7 @@
           <button type="button" onclick={() => { editingUrl = false; }}>cancel</button>
         </form>
       {:else if resource.url}
-        <a href={resource.url} target="_blank" rel="noreferrer" onclick={(e) => { if (e.altKey) { e.preventDefault(); startEditUrl(); } }}>{resource.url}</a>
+        <a href={resource.url} target="_blank" rel="noreferrer" onclick={(e) => { if (e.altKey) { e.preventDefault(); startEditUrl(); } else { api.markRead(rid); } }}>{resource.url}</a>
         <button class="inline-edit" type="button" onclick={startEditUrl}>edit</button>
       {:else}
         <button class="unset-link" type="button" onclick={startEditUrl}>set url…</button>
