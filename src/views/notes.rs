@@ -24,62 +24,74 @@ pub fn new_page(r: &Resource) -> Markup {
         }
 
         div.row-actions.mt {
-            button.primary onclick="window._doSave()" type="button" { ":w save" }
+            button.primary onclick="saveNote()" type="button" { ":w save" }
             a.btn href=(back_url) { "cancel" }
+        }
+
+        form #note-save-form method="post" action=(create_url) style="display:none" {
+            input type="hidden" name="title" id="note-title-hidden" value="Untitled";
+            input type="hidden" name="body_md" id="note-body-md";
+            input type="hidden" name="body_html" id="note-body-html";
         }
 
         script src="/static/codemirror.bundle.js" {}
         script {
-            (PreEscaped(format!(r#"
-window.addEventListener('rl:exitEdit', function() {{
-    window.location.href = {back};
-}});
+            (PreEscaped(r#"
+document.getElementById('note-title-input').addEventListener('input', function() {
+    document.getElementById('note-title-hidden').value = this.value;
+});
 
-window.addEventListener('DOMContentLoaded', function() {{
-    window.initEditor('cm-container', '', {save_url});
-    if (window._cmView) window._cmView.focus();
-}});
-"#,
-                back     = serde_json::to_string(&back_url).unwrap(),
-                save_url = serde_json::to_string(&create_url).unwrap(),
-            )))
+function saveNote() {
+    var view = window._view;
+    if (!view) return;
+    document.getElementById('note-body-md').value = view.state.doc.toString();
+    document.getElementById('note-body-html').value = '';
+    document.getElementById('note-title-hidden').value =
+        document.getElementById('note-title-input').value || 'Untitled';
+    document.getElementById('note-save-form').submit();
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+    window.initEditor('cm-container', '');
+    if (window._view) window._view.focus();
+});
+"#))
         }
     })
 }
 
 pub fn view_page(r: &Resource, note: &Note) -> Markup {
-    let edit_url = format!("/resources/{}/notes/{}/edit", r.id, note.id);
-    let del_url  = format!("/resources/{}/notes/{}/delete", r.id, note.id);
     let back_url = format!("/resources/{}", r.id);
 
     page(&note.title, html! {
         div.row-actions.mb {
             a.dim.small href=(back_url) { "← " (r.title) }
         }
-
-        // Rendered view
-        div #note-rendered {
-            h1 { (note.title) }
-            div.note-body {
-                (PreEscaped(&note.body_html))
-            }
-            p.small.dim.mt { "press " code { "e" } " to edit" }
+        h1 { (note.title) }
+        div #note-rendered.note-body {
+            (PreEscaped(&note.body_html))
         }
 
-        // Editor — hidden by default
         div #note-editor style="display:none" {
+            form #note-save-form method="post"
+                action=(format!("/resources/{}/notes/{}/edit", r.id, note.id)) {
+                input type="hidden" name="title" id="note-title-hidden" value=(note.title);
+                input type="hidden" name="body_md" id="note-body-md";
+                input type="hidden" name="body_html" id="note-body-html";
+            }
             div.mb {
                 input #note-title-input type="text" value=(note.title)
                     style="font-size:1.1rem;border:none;border-bottom:1px solid var(--border);width:100%;outline:none;background:transparent;"
-                    autocomplete="off";
+                    oninput="document.getElementById('note-title-hidden').value=this.value";
             }
             div #editor-wrap {
                 div #cm-container {}
             }
             div.row-actions.mt {
-                button.primary onclick="window._doSave()" type="button" { ":w save" }
+                button.primary onclick="saveNote()" type="button" { ":w save" }
                 button onclick="exitEdit()" type="button" { "cancel" }
-                form method="post" action=(del_url) style="display:inline" {
+                form method="post" action=(format!("/resources/{}/notes/{}/delete", r.id, note.id))
+                    style="display:inline" {
                     button.danger type="submit"
                         onclick="return confirm('delete this note?')" { "delete" }
                 }
@@ -90,15 +102,16 @@ pub fn view_page(r: &Resource, note: &Note) -> Markup {
         script {
             (PreEscaped(format!(r#"
 var _editorInit = false;
+var _initialMd = {md};
 
 function enterEdit() {{
     document.getElementById('note-rendered').style.display = 'none';
     document.getElementById('note-editor').style.display = '';
     if (!_editorInit) {{
         _editorInit = true;
-        window.initEditor('cm-container', {md}, {edit_url});
+        window.initEditor('cm-container', _initialMd);
     }}
-    if (window._cmView) window._cmView.focus();
+    if (window._view) window._view.focus();
 }}
 
 function exitEdit() {{
@@ -106,7 +119,16 @@ function exitEdit() {{
     document.getElementById('note-rendered').style.display = '';
 }}
 
-// :q exits edit mode; :w/:wq navigates away (server redirects back here)
+function saveNote() {{
+    var view = window._view;
+    if (!view) return;
+    document.getElementById('note-body-md').value = view.state.doc.toString();
+    document.getElementById('note-body-html').value = '';
+    document.getElementById('note-title-hidden').value =
+        document.getElementById('note-title-input').value || 'Untitled';
+    document.getElementById('note-save-form').submit();
+}}
+
 window.addEventListener('rl:exitEdit', exitEdit);
 
 document.addEventListener('keydown', function(e) {{
@@ -122,8 +144,7 @@ document.addEventListener('keydown', function(e) {{
     }}
 }});
 "#,
-                md       = serde_json::to_string(&note.body_md).unwrap(),
-                edit_url = serde_json::to_string(&edit_url).unwrap(),
+                md = serde_json::to_string(&note.body_md).unwrap()
             )))
         }
     })
