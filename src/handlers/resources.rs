@@ -7,6 +7,7 @@ use sqlx::SqlitePool;
 
 use crate::{
     error::AppError,
+    indexing::{pdf as pdf_indexer, url as url_indexer},
     models::{note, resource, tag},
     views::resources as view,
 };
@@ -60,6 +61,25 @@ pub async fn create(
         .filter(|s| !s.is_empty())
         .collect();
     resource::set_tags(&pool, id, &tags).await?;
+    // Spawn PDF indexing in background if a local file is set
+    if let Some(fp) = &input.file_path {
+        let fp = fp.clone();
+        let pool2 = pool.clone();
+        tokio::spawn(async move {
+            pdf_indexer::index_pdf(&pool2, id, &fp).await;
+        });
+    }
+    // Index article/blog URL content
+    let kind = input.kind.as_str();
+    if matches!(kind, "article" | "blog") {
+        if let Some(u) = &input.url {
+            let u = u.clone();
+            let pool2 = pool.clone();
+            tokio::spawn(async move {
+                url_indexer::index_url(&pool2, id, &u).await;
+            });
+        }
+    }
     Ok(Redirect::to(&format!("/resources/{id}")))
 }
 
@@ -103,6 +123,25 @@ pub async fn update(
         .filter(|s| !s.is_empty())
         .collect();
     resource::set_tags(&pool, id, &tags).await?;
+    // Re-index PDF if file path is set
+    if let Some(fp) = &input.file_path {
+        let fp = fp.clone();
+        let pool2 = pool.clone();
+        tokio::spawn(async move {
+            pdf_indexer::index_pdf(&pool2, id, &fp).await;
+        });
+    }
+    // Re-index article/blog URL
+    let kind = input.kind.as_str();
+    if matches!(kind, "article" | "blog") {
+        if let Some(u) = &input.url {
+            let u = u.clone();
+            let pool2 = pool.clone();
+            tokio::spawn(async move {
+                url_indexer::index_url(&pool2, id, &u).await;
+            });
+        }
+    }
     Ok(Redirect::to(&format!("/resources/{id}")))
 }
 

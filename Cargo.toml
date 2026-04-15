@@ -53,6 +53,12 @@ mime_guess = "2"
 # URL encoding for query strings
 urlencoding = "2"
 
+# HTTP client for URL fetching
+reqwest = { version = "0.11", features = ["rustls-tls"], default-features = false }
+
+# HTML to text stripping
+scraper = "0.19"
+
 [profile.release]
 opt-level = 3
 lto = true

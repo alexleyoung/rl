@@ -1,6 +1,7 @@
 mod db;
 mod error;
 mod handlers;
+mod indexing;
 mod markdown;
 mod models;
 mod views;
