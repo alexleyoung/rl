@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ResourceDto, ResourceInputDto } from '$lib/api';
+  import { api, type ResourceDto, type ResourceInputDto } from '$lib/api';
   import FileDropInput from '$lib/FileDropInput.svelte';
   import TagsInput from '$lib/TagsInput.svelte';
 
@@ -19,6 +19,7 @@
   let tags = $state<string[]>([]);
   let error = $state('');
   let saving = $state(false);
+  let extracting = $state(false);
 
   // Populate from initial when it arrives (async load from parent)
   $effect(() => {
@@ -31,6 +32,30 @@
       tags = initial.tags ?? [];
     }
   });
+
+  // Apply extracted metadata — only fill fields the user hasn't typed yet
+  async function applyMeta(input: { file_path?: string; url?: string }) {
+    extracting = true;
+    try {
+      const meta = await api.extractMeta(input);
+      if (meta.title && !title.trim()) title = meta.title;
+      if (meta.author && !author.trim()) author = meta.author;
+    } catch {
+      // extraction failure is silent — fields just stay empty
+    } finally {
+      extracting = false;
+    }
+  }
+
+  function onFilePath(path: string) {
+    file_path = path;
+    if (path) applyMeta({ file_path: path });
+  }
+
+  async function onUrlBlur() {
+    const u = url.trim();
+    if (u) applyMeta({ url: u });
+  }
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -68,7 +93,7 @@
     </select>
   </div>
   <div>
-    <label for="title">title *</label>
+    <label for="title">title *{#if extracting}<span class="extracting"> extracting…</span>{/if}</label>
     <input id="title" type="text" bind:value={title} />
   </div>
   <div>
@@ -77,11 +102,11 @@
   </div>
   <div>
     <label for="url">url</label>
-    <input id="url" type="url" bind:value={url} />
+    <input id="url" type="url" bind:value={url} onblur={onUrlBlur} />
   </div>
   <div>
     <label for="file_path">file</label>
-    <FileDropInput bind:value={file_path} />
+    <FileDropInput bind:value={file_path} onchange={onFilePath} />
   </div>
   <div>
     <label>tags</label>
@@ -92,3 +117,11 @@
     <button type="button" onclick={() => history.back()}>cancel</button>
   </div>
 </form>
+
+<style>
+  .extracting {
+    font-weight: normal;
+    color: var(--dim);
+    font-size: 0.8em;
+  }
+</style>

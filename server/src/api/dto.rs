@@ -145,3 +145,20 @@ pub struct ApiErrorDto {
     pub code: String,
     pub message: String,
 }
+
+#[derive(Debug, Deserialize, TS)]
+#[ts(export, export_to = "client/src/lib/types/")]
+pub struct ExtractInputDto {
+    #[serde(default)]
+    pub file_path: Option<String>,
+    #[serde(default)]
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Default, Serialize, TS)]
+#[ts(export, export_to = "client/src/lib/types/")]
+pub struct MetadataDto {
+    pub title: Option<String>,
+    pub author: Option<String>,
+    pub description: Option<String>,
+}

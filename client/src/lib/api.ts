@@ -10,11 +10,14 @@ import type { SearchResponseDto } from './types/SearchResponseDto';
 import type { ApiErrorDto } from './types/ApiErrorDto';
 import type { UploadResponseDto } from './types/UploadResponseDto';
 import type { SetTagsDto } from './types/SetTagsDto';
+import type { ExtractInputDto } from './types/ExtractInputDto';
+import type { MetadataDto } from './types/MetadataDto';
 
 export type {
   ResourceDto, ResourceInputDto, ResourceDetailDto,
   NoteDto, NoteInputDto, NoteLocationDto,
-  QuickSetDto, SetTagsDto, TagDto, SearchResponseDto, ApiErrorDto, UploadResponseDto,
+  QuickSetDto, SetTagsDto, TagDto, SearchResponseDto, ApiErrorDto,
+  UploadResponseDto, ExtractInputDto, MetadataDto,
 };
 
 const BASE = '/api/v1';
@@ -97,6 +100,10 @@ export const api = {
   // Search
   search: (q: string, limit?: number) =>
     req<SearchResponseDto>(`/search?q=${encodeURIComponent(q)}${limit ? `&limit=${limit}` : ''}`),
+
+  // Extract metadata from an uploaded file path or URL
+  extractMeta: (input: ExtractInputDto) =>
+    req<MetadataDto>('/extract', { method: 'POST', body: JSON.stringify(input) }),
 
   // Upload a file, returns the server-side absolute path
   uploadFile: async (file: File): Promise<UploadResponseDto> => {

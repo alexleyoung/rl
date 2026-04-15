@@ -1,4 +1,5 @@
 pub mod dto;
+pub mod extract;
 pub mod files;
 pub mod notes;
 pub mod resources;
@@ -34,5 +35,6 @@ pub fn router() -> Router<AppState> {
         .route("/search",                     get(search::search))
         .route("/tags",                       get(tags::list))
         .route("/upload",                     post(upload::upload).layer(DefaultBodyLimit::disable()))
+        .route("/extract",                    post(extract::extract))
         .layer(cors)
 }
