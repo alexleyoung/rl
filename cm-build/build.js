@@ -4,30 +4,43 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { vim, Vim } from "@replit/codemirror-vim";
 
-// Register :w / :wq / :q BEFORE any editor is created.
-// Vim.defineEx is global to the vim extension — all editor instances share it.
+// Define ex commands at module load time — before any editor is created.
+// This ensures :w/:wq/:q are available as soon as vim mode is active.
 Vim.defineEx("write", "w", function() {
-  submitEditor();
-});
-Vim.defineEx("wq", "wq", function() {
-  submitEditor();
-  window.location.reload();
-});
-Vim.defineEx("quit", "q", function() {
-  window.dispatchEvent(new CustomEvent("cm:cancel"));
+  doSave();
 });
 
-function submitEditor() {
+Vim.defineEx("wq", "wq", function() {
+  doSave();
+});
+
+Vim.defineEx("quit", "q", function() {
+  window.dispatchEvent(new CustomEvent("rl:exitEdit"));
+});
+
+function doSave() {
   const view = window._cmView;
   if (!view) return;
-  const md = view.state.doc.toString();
-  const bodyMd = document.getElementById("note-body-md");
+
+  const bodyMd   = document.getElementById("note-body-md");
   const bodyHtml = document.getElementById("note-body-html");
-  const form = document.getElementById("note-save-form");
+  const form     = document.getElementById("note-save-form");
+
   if (!form || !bodyMd) return;
-  bodyMd.value = md;
+
+  bodyMd.value = view.state.doc.toString();
   if (bodyHtml) bodyHtml.value = "";
-  form.requestSubmit();
+
+  // Sync title from input if present (new note page)
+  const titleInput  = document.getElementById("note-title-input");
+  const titleHidden = document.getElementById("note-title-hidden");
+  if (titleInput && titleHidden) {
+    titleHidden.value = titleInput.value || "Untitled";
+  }
+
+  // Use plain .submit() — requestSubmit() can fail when form is display:none
+  // in some browsers even though form itself is outside hidden containers here.
+  form.submit();
 }
 
 window.initEditor = function(containerId, initialContent) {
@@ -36,7 +49,7 @@ window.initEditor = function(containerId, initialContent) {
 
   const view = new EditorView({
     state: EditorState.create({
-      doc: initialContent,
+      doc: initialContent || "",
       extensions: [
         vim(),
         history(),
@@ -49,20 +62,14 @@ window.initEditor = function(containerId, initialContent) {
     parent: container,
   });
 
-  // Store globally so submitEditor and saveNote() can reach it
   window._cmView = view;
 
-  // Ctrl+S / Cmd+S fallback
-  container.addEventListener("keydown", function(e) {
+  // Ctrl+S / Cmd+S fallback (works whether in insert or normal mode)
+  window.addEventListener("keydown", function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault();
-      submitEditor();
+      doSave();
     }
-  });
-
-  // :q cancels edit
-  window.addEventListener("cm:cancel", function() {
-    window.dispatchEvent(new CustomEvent("rl:exitEdit"));
   });
 
   return view;
