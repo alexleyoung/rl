@@ -9,10 +9,11 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use sqlx::SqlitePool;
 use tower_http::cors::{Any, CorsLayer};
 
-pub fn router() -> Router<SqlitePool> {
+use crate::state::AppState;
+
+pub fn router() -> Router<AppState> {
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)

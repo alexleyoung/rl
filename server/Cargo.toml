@@ -56,3 +56,8 @@ scraper = "0.19"
 
 # TypeScript binding generation
 ts-rs = { version = "9", features = ["chrono-impl"] }
+
+# Embeddings
+fastembed = "4"
+bytemuck = { version = "1", features = ["derive"] }
+parking_lot = "0.12"

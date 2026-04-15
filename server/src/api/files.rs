@@ -4,16 +4,15 @@ use axum::{
     http::{header, StatusCode},
     response::Response,
 };
-use sqlx::SqlitePool;
 use tokio_util::io::ReaderStream;
 
-use crate::{error::AppError, models::resource};
+use crate::{error::AppError, models::resource, state::AppState};
 
 pub async fn serve(
-    State(pool): State<SqlitePool>,
+    State(s): State<AppState>,
     Path(id): Path<i64>,
 ) -> Result<Response, AppError> {
-    let r = resource::get(&pool, id).await?.ok_or(AppError::NotFound)?;
+    let r = resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
     let fp = r.file_path.ok_or(AppError::NotFound)?;
 
     let file = tokio::fs::File::open(&fp)

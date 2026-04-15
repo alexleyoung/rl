@@ -1,9 +1,8 @@
 use axum::{extract::State, Json};
-use sqlx::SqlitePool;
 
-use crate::{api::dto::TagDto, error::AppError};
+use crate::{api::dto::TagDto, error::AppError, state::AppState};
 
-pub async fn list(State(pool): State<SqlitePool>) -> Result<Json<Vec<TagDto>>, AppError> {
+pub async fn list(State(s): State<AppState>) -> Result<Json<Vec<TagDto>>, AppError> {
     let rows = sqlx::query!(
         "SELECT t.name AS name, COUNT(rt.resource_id) AS count
          FROM tags t
@@ -11,7 +10,7 @@ pub async fn list(State(pool): State<SqlitePool>) -> Result<Json<Vec<TagDto>>, A
          GROUP BY t.id
          ORDER BY t.name"
     )
-    .fetch_all(&pool)
+    .fetch_all(&s.pool)
     .await?;
     Ok(Json(rows.into_iter().map(|r| TagDto { name: r.name, count: r.count as i64 }).collect()))
 }
