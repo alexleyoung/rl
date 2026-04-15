@@ -1,0 +1,64 @@
+[package]
+name = "rl-server"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "rl"
+path = "src/main.rs"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["multipart"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "cors"] }
+tokio-util = { version = "0.7", features = ["io"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite"] }
+
+# Templating (kept during phases 1-6; removed in phase 7)
+maud = { version = "0.26", features = ["axum"] }
+
+# Markdown
+pulldown-cmark = "0.11"
+
+# Static assets (kept during phases 1-6; removed in phase 7)
+rust-embed = { version = "8", features = ["interpolate-folder-path"] }
+
+# Config
+dotenvy = "0.15"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# PDF extraction
+pdf-extract = "0.7"
+
+# MIME type guessing
+mime_guess = "2"
+
+# URL encoding for query strings
+urlencoding = "2"
+
+# HTTP client for URL fetching
+reqwest = { version = "0.11", features = ["rustls-tls"], default-features = false }
+
+# HTML to text stripping
+scraper = "0.19"
+
+# TypeScript binding generation (exports via `cargo test` per ts-rs convention)
+ts-rs = { version = "9", features = ["chrono-impl"] }

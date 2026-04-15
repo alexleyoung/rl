@@ -8,7 +8,10 @@ pub async fn index_url(pool: &SqlitePool, resource_id: i64, url: &str) {
     let url = url.to_string();
     let text = match fetch_text(&url).await {
         Ok(t) => t,
-        Err(e) => { warn!("fetch_text failed for {url}: {e}"); return; }
+        Err(e) => {
+            warn!("fetch_text failed for {url}: {e}");
+            return;
+        }
     };
 
     if text.trim().is_empty() {
@@ -16,18 +19,16 @@ pub async fn index_url(pool: &SqlitePool, resource_id: i64, url: &str) {
     }
 
     // Remove stale URL chunks for this resource
-    let _ = sqlx::query(
-        "DELETE FROM search_fts WHERE source_kind='url' AND source_id=?"
-    )
-    .bind(resource_id)
-    .execute(pool)
-    .await;
+    let _ = sqlx::query("DELETE FROM search_fts WHERE source_kind='url' AND source_id=?")
+        .bind(resource_id)
+        .execute(pool)
+        .await;
 
     let chunks = chunk_text(&text, CHUNK_SIZE);
     for (i, chunk) in chunks.iter().enumerate() {
         let title = format!("Article chunk {}", i + 1);
         let res = sqlx::query(
-            "INSERT INTO search_fts(source_kind, source_id, title, body) VALUES ('url', ?, ?, ?)"
+            "INSERT INTO search_fts(source_kind, source_id, title, body) VALUES ('url', ?, ?, ?)",
         )
         .bind(resource_id)
         .bind(&title)
@@ -41,7 +42,10 @@ pub async fn index_url(pool: &SqlitePool, resource_id: i64, url: &str) {
         }
     }
 
-    tracing::info!("indexed {} URL chunks for resource {resource_id}", chunks.len());
+    tracing::info!(
+        "indexed {} URL chunks for resource {resource_id}",
+        chunks.len()
+    );
 }
 
 async fn fetch_text(url: &str) -> anyhow::Result<String> {
@@ -59,10 +63,14 @@ fn html_to_text(html: &str) -> String {
 
     // Remove script and style elements
     let sel_body = Selector::parse("body").unwrap();
-    let sel_skip = Selector::parse("script, style, nav, footer, header").unwrap();
+    let _sel_skip = Selector::parse("script, style, nav, footer, header").unwrap();
 
     let body = doc.select(&sel_body).next();
-    let root = if let Some(b) = body { b.inner_html() } else { html.to_string() };
+    let root = if let Some(b) = body {
+        b.inner_html()
+    } else {
+        html.to_string()
+    };
 
     // Re-parse just the body fragment
     let fragment = Html::parse_fragment(&root);
@@ -90,7 +98,9 @@ fn chunk_text(text: &str, size: usize) -> Vec<String> {
             chunks.push(buf.trim().to_string());
             buf.clear();
         }
-        if !buf.is_empty() { buf.push(' '); }
+        if !buf.is_empty() {
+            buf.push(' ');
+        }
         buf.push_str(word);
     }
     if !buf.trim().is_empty() {

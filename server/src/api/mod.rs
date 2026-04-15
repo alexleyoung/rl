@@ -1,0 +1,32 @@
+pub mod dto;
+pub mod files;
+pub mod notes;
+pub mod resources;
+pub mod search;
+pub mod tags;
+
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use sqlx::SqlitePool;
+use tower_http::cors::{Any, CorsLayer};
+
+pub fn router() -> Router<SqlitePool> {
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
+    Router::new()
+        .route("/resources",                  get(resources::list).post(resources::create))
+        .route("/resources/:id",              get(resources::show).patch(resources::update).delete(resources::delete))
+        .route("/resources/:id/quick-set",    post(resources::quick_set))
+        .route("/resources/:id/file",         get(files::serve))
+        .route("/resources/:rid/notes",       get(notes::list).post(notes::create))
+        .route("/resources/:rid/notes/:nid",  get(notes::show).patch(notes::update).delete(notes::delete))
+        .route("/notes/:nid",                 get(notes::locate))
+        .route("/search",                     get(search::search))
+        .route("/tags",                       get(tags::list))
+        .layer(cors)
+}

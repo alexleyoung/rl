@@ -1,3 +1,4 @@
+mod api;
 mod db;
 mod error;
 mod handlers;
@@ -52,6 +53,8 @@ async fn main() {
         .route("/notes-redirect/:nid", get(handlers::notes::redirect_by_note_id))
         // Search
         .route("/search", get(handlers::search::search_page))
+        // JSON API
+        .nest("/api/v1", api::router())
         .with_state(pool);
 
     let bind =

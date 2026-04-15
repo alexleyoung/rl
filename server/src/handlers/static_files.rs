@@ -7,7 +7,7 @@ use axum::{
 use rust_embed::RustEmbed;
 
 #[derive(RustEmbed)]
-#[folder = "static/"]
+#[folder = "$CARGO_MANIFEST_DIR/../static/"]
 pub struct StaticAssets;
 
 pub async fn serve_static(Path(path): Path<String>) -> Response {
