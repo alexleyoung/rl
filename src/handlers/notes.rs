@@ -81,6 +81,14 @@ pub async fn update(
     Ok(Redirect::to(&format!("/resources/{rid}/notes/{nid}")))
 }
 
+pub async fn redirect_by_note_id(
+    State(pool): State<SqlitePool>,
+    Path(nid): Path<i64>,
+) -> Result<impl IntoResponse, AppError> {
+    let n = note::get(&pool, nid).await?.ok_or(AppError::NotFound)?;
+    Ok(Redirect::to(&format!("/resources/{}/notes/{}", n.resource_id, nid)))
+}
+
 pub async fn delete(
     State(pool): State<SqlitePool>,
     Path((rid, nid)): Path<(i64, i64)>,

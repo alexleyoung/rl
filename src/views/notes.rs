@@ -62,16 +62,17 @@ pub fn view_page(r: &Resource, note: &Note) -> Markup {
         script src="/static/codemirror.bundle.js" {}
         script {
             (PreEscaped(format!(r#"
-var _view = null;
+var _editorInit = false;
 var _initialMd = {md};
 
 function enterEdit() {{
     document.getElementById('note-rendered').style.display = 'none';
     document.getElementById('note-editor').style.display = '';
-    if (!_view) {{
-        _view = window.initEditor('cm-container', _initialMd, null);
+    if (!_editorInit) {{
+        _editorInit = true;
+        window.initEditor('cm-container', _initialMd);
     }}
-    if (_view) _view.focus();
+    if (window._cmView) window._cmView.focus();
 }}
 
 function exitEdit() {{
@@ -80,16 +81,18 @@ function exitEdit() {{
 }}
 
 function saveNote() {{
-    if (!_view) return;
-    var md = _view.state.doc.toString();
-    document.getElementById('note-body-md').value = md;
-    // body_html is generated server-side; send empty, server will render
+    var view = window._cmView;
+    if (!view) return;
+    document.getElementById('note-body-md').value = view.state.doc.toString();
     document.getElementById('note-body-html').value = '';
     document.getElementById('note-save-form').submit();
 }}
 
+// :q from vim triggers rl:exitEdit
+window.addEventListener('rl:exitEdit', exitEdit);
+
 document.addEventListener('keydown', function(e) {{
-    if (e.key === 'e' && !e.ctrlKey && !e.metaKey) {{
+    if (e.key === 'e' && !e.ctrlKey && !e.metaKey && !e.altKey) {{
         var tag = document.activeElement && document.activeElement.tagName;
         if (tag !== 'INPUT' && tag !== 'TEXTAREA') {{
             var editor = document.getElementById('note-editor');

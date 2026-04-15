@@ -153,6 +153,78 @@ pub async fn delete(
     Ok(Redirect::to("/"))
 }
 
+#[derive(Deserialize)]
+pub struct QuickSetForm {
+    pub field: String,
+    pub value: String,
+}
+
+pub async fn quick_set(
+    State(pool): State<SqlitePool>,
+    Path(id): Path<i64>,
+    Form(form): Form<QuickSetForm>,
+) -> Result<impl IntoResponse, AppError> {
+    let r = resource::get(&pool, id).await?.ok_or(AppError::NotFound)?;
+    let val = if form.value.trim().is_empty() { None } else { Some(form.value.trim().to_string()) };
+
+    match form.field.as_str() {
+        "url" => {
+            sqlx::query!("UPDATE resources SET url=? WHERE id=?", val, id)
+                .execute(&pool).await?;
+            // Trigger URL indexing if article/blog
+            if matches!(r.kind.as_str(), "article" | "blog") {
+                if let Some(u) = val {
+                    let pool2 = pool.clone();
+                    tokio::spawn(async move {
+                        url_indexer::index_url(&pool2, id, &u).await;
+                    });
+                }
+            }
+        }
+        "file_path" => {
+            sqlx::query!("UPDATE resources SET file_path=? WHERE id=?", val, id)
+                .execute(&pool).await?;
+            if let Some(fp) = val {
+                let pool2 = pool.clone();
+                tokio::spawn(async move {
+                    pdf_indexer::index_pdf(&pool2, id, &fp).await;
+                });
+            }
+        }
+        _ => {}
+    }
+    Ok(Redirect::to(&format!("/resources/{id}")))
+}
+
+pub async fn open_file(
+    State(pool): State<SqlitePool>,
+    Path(id): Path<i64>,
+) -> Result<impl IntoResponse, AppError> {
+    use axum::http::{header, StatusCode};
+    use axum::response::Response;
+    use axum::body::Body;
+
+    let r = resource::get(&pool, id).await?.ok_or(AppError::NotFound)?;
+    let fp = r.file_path.ok_or(AppError::NotFound)?;
+
+    let bytes = tokio::fs::read(&fp).await
+        .map_err(|e| AppError::Other(anyhow::anyhow!("cannot read file {fp}: {e}")))?;
+
+    let mime = mime_guess::from_path(&fp).first_or_octet_stream();
+    let filename = std::path::Path::new(&fp)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("file");
+    let disposition = format!("inline; filename=\"{filename}\"");
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, mime.as_ref())
+        .header(header::CONTENT_DISPOSITION, disposition)
+        .body(Body::from(bytes))
+        .unwrap())
+}
+
 fn non_empty(s: Option<String>) -> Option<String> {
     s.and_then(|v| if v.trim().is_empty() { None } else { Some(v) })
 }

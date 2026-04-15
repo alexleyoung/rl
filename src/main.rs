@@ -40,12 +40,16 @@ async fn main() {
         .route("/resources/:id", get(handlers::resources::show))
         .route("/resources/:id/edit", get(handlers::resources::edit_form).post(handlers::resources::update))
         .route("/resources/:id/delete", post(handlers::resources::delete))
+        .route("/resources/:id/quick-set", post(handlers::resources::quick_set))
+        .route("/resources/:id/open-file", get(handlers::resources::open_file))
         // Notes
         .route("/resources/:rid/notes/new", get(handlers::notes::new_form))
         .route("/resources/:rid/notes", post(handlers::notes::create))
         .route("/resources/:rid/notes/:nid", get(handlers::notes::show))
         .route("/resources/:rid/notes/:nid/edit", get(handlers::notes::edit_form).post(handlers::notes::update))
         .route("/resources/:rid/notes/:nid/delete", post(handlers::notes::delete))
+        // Note redirect (used by search results)
+        .route("/notes-redirect/:nid", get(handlers::notes::redirect_by_note_id))
         // Search
         .route("/search", get(handlers::search::search_page))
         .with_state(pool);

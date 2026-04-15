@@ -2,12 +2,37 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
-import { vim } from "@replit/codemirror-vim";
+import { vim, Vim } from "@replit/codemirror-vim";
 
-// Expose initEditor on window for use by the page
-window.initEditor = function(containerId, initialContent, saveUrl) {
+// Register :w / :wq / :q BEFORE any editor is created.
+// Vim.defineEx is global to the vim extension — all editor instances share it.
+Vim.defineEx("write", "w", function() {
+  submitEditor();
+});
+Vim.defineEx("wq", "wq", function() {
+  submitEditor();
+  window.location.reload();
+});
+Vim.defineEx("quit", "q", function() {
+  window.dispatchEvent(new CustomEvent("cm:cancel"));
+});
+
+function submitEditor() {
+  const view = window._cmView;
+  if (!view) return;
+  const md = view.state.doc.toString();
+  const bodyMd = document.getElementById("note-body-md");
+  const bodyHtml = document.getElementById("note-body-html");
+  const form = document.getElementById("note-save-form");
+  if (!form || !bodyMd) return;
+  bodyMd.value = md;
+  if (bodyHtml) bodyHtml.value = "";
+  form.requestSubmit();
+}
+
+window.initEditor = function(containerId, initialContent) {
   const container = document.getElementById(containerId);
-  if (!container) return;
+  if (!container) return null;
 
   const view = new EditorView({
     state: EditorState.create({
@@ -19,46 +44,26 @@ window.initEditor = function(containerId, initialContent, saveUrl) {
         lineNumbers(),
         markdown(),
         EditorView.lineWrapping,
-        // Save on :w (vim write command triggers blur on the underlying textarea,
-        // but we hook the vim ex command via a custom save function)
       ],
     }),
     parent: container,
   });
 
-  // Intercept vim :w to submit the form
-  // @replit/codemirror-vim dispatches a custom event or we can override via the
-  // standard vim.js API: Vim.defineEx
-  // The vim extension exposes Vim via the global set by the lib
-  // We listen for a custom "cm:save" event we'll fire from Vim.defineEx
-  if (window.Vim) {
-    window.Vim.defineEx("write", "w", function() {
-      submitEditor(view, saveUrl);
-    });
-    window.Vim.defineEx("wq", "wq", function() {
-      submitEditor(view, saveUrl);
-    });
-    window.Vim.defineEx("quit", "q", function() {
-      window.location.reload();
-    });
-  }
+  // Store globally so submitEditor and saveNote() can reach it
+  window._cmView = view;
 
-  // Also wire Ctrl+S as fallback
+  // Ctrl+S / Cmd+S fallback
   container.addEventListener("keydown", function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault();
-      submitEditor(view, saveUrl);
+      submitEditor();
     }
+  });
+
+  // :q cancels edit
+  window.addEventListener("cm:cancel", function() {
+    window.dispatchEvent(new CustomEvent("rl:exitEdit"));
   });
 
   return view;
 };
-
-function submitEditor(view, saveUrl) {
-  const content = view.state.doc.toString();
-  const form = document.getElementById("note-save-form");
-  if (form) {
-    document.getElementById("note-body-md").value = content;
-    form.requestSubmit();
-  }
-}

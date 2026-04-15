@@ -1,6 +1,6 @@
 use crate::models::resource::Resource;
 use crate::views::layout::page;
-use maud::{html, Markup};
+use maud::{html, Markup, PreEscaped};
 
 pub fn list_page(resources: &[Resource], all_tags: &[String], active_tag: Option<&str>) -> Markup {
     page("resources", html! {
@@ -101,14 +101,31 @@ pub fn detail_page(r: &Resource, tags: &[String], notes: &[crate::models::note::
             @if let Some(a) = &r.author {
                 div.meta-row { span.key.dim { "author" } span { (a) } }
             }
-            @if let Some(u) = &r.url {
-                div.meta-row { span.key.dim { "url" }
+            // URL row — always shown; empty = prompt to set
+            div.meta-row {
+                span.key.dim { "url" }
+                @if let Some(u) = &r.url {
                     a href=(u) target="_blank" rel="noopener" { (u) }
+                } @else {
+                    a.dim href=(format!("/resources/{}/edit#url", r.id))
+                        onclick=(format!("return promptField({},'url','Paste a URL:')", r.id))
+                        style="font-style:italic" {
+                        "set url…"
+                    }
                 }
             }
-            @if let Some(fp) = &r.file_path {
-                div.meta-row { span.key.dim { "file" }
-                    a href=(format!("/files/{}", r.id)) { (fp) }
+            // File row — always shown; empty = prompt to set
+            div.meta-row {
+                span.key.dim { "file" }
+                @if let Some(fp) = &r.file_path {
+                    a href=(format!("/resources/{}/open-file", r.id))
+                        target="_blank" rel="noopener" { (fp) }
+                } @else {
+                    a.dim href=(format!("/resources/{}/edit#file_path", r.id))
+                        onclick=(format!("return promptField({},'file_path','Enter local file path:')", r.id))
+                        style="font-style:italic" {
+                        "set file path…"
+                    }
                 }
             }
             div.meta-row { span.key.dim { "added" } span.dim { (fmt_date(r.added_at)) } }
@@ -121,6 +138,24 @@ pub fn detail_page(r: &Resource, tags: &[String], notes: &[crate::models::note::
                     }
                 }
             }
+        }
+        // Inline quick-set form (hidden, submitted via promptField)
+        form #quick-set-form method="post" action=(format!("/resources/{}/quick-set", r.id))
+            style="display:none" {
+            input type="hidden" #quick-field name="field";
+            input type="hidden" #quick-value name="value";
+        }
+        script {
+            (PreEscaped(r#"
+function promptField(rid, field, label) {
+    var val = window.prompt(label);
+    if (val === null || val.trim() === '') return false;
+    document.getElementById('quick-field').value = field;
+    document.getElementById('quick-value').value = val.trim();
+    document.getElementById('quick-set-form').submit();
+    return false;
+}
+"#))
         }
 
         div.row-actions.mb {
