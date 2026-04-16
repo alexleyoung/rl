@@ -24,9 +24,12 @@ search chunks:
 CREATE TABLE IF NOT EXISTS reading_content (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     resource_id  INTEGER NOT NULL UNIQUE REFERENCES resources(id) ON DELETE CASCADE,
-    content_html TEXT NOT NULL,            -- cleaned, structured HTML
+    content_html TEXT NOT NULL DEFAULT '',  -- cleaned, structured HTML
+    content_text TEXT NOT NULL DEFAULT '',  -- plain text (for word count, future FTS)
     source_type  TEXT NOT NULL CHECK (source_type IN ('url','pdf')),
     word_count   INTEGER NOT NULL DEFAULT 0,
+    status       TEXT NOT NULL DEFAULT 'pending'
+                 CHECK (status IN ('pending','ok','failed')),
     extracted_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 ```
@@ -35,8 +38,14 @@ Key decisions:
 - **One row per resource** (UNIQUE on resource_id) — a resource has at most one
   readable document
 - `content_html` stores the cleaned article/document HTML (not raw page HTML)
+- `content_text` stores the plain text version — used for word count and could
+  feed improved FTS indexing later
 - `source_type` tracks whether content came from a URL or PDF
-- `word_count` enables estimated reading time display (word_count / 200 wpm)
+- `word_count` enables estimated reading time display (~230 wpm)
+- **`status` column** (`pending` → `ok` | `failed`) — since extraction is async
+  and fire-and-forget, the reader handler needs to know whether extraction is
+  in progress, succeeded, or failed. This enables proper UX: show a loading
+  page while pending, the reader when ok, or an error page with retry when failed
 - Separate table (not columns on `resources`) keeps the main table lean and
   makes it easy to re-extract without touching resource metadata
 
@@ -136,15 +145,24 @@ pub struct ReadingContent {
     pub id: i64,
     pub resource_id: i64,
     pub content_html: String,
+    pub content_text: String,
     pub source_type: String,
     pub word_count: i64,
+    pub status: String,        // "pending", "ok", "failed"
     pub extracted_at: i64,
 }
 
 pub async fn get_for_resource(pool: &SqlitePool, resource_id: i64) -> Result<Option<ReadingContent>>
-pub async fn upsert(pool: &SqlitePool, resource_id: i64, content_html: &str, source_type: &str, word_count: i64) -> Result<()>
-pub async fn has_content(pool: &SqlitePool, resource_id: i64) -> Result<bool>
+pub async fn upsert(pool: &SqlitePool, resource_id: i64, html: &str, text: &str, source_type: &str, word_count: i64) -> Result<()>
+pub async fn mark_pending(pool: &SqlitePool, resource_id: i64, source_type: &str) -> Result<()>
+pub async fn mark_failed(pool: &SqlitePool, resource_id: i64) -> Result<()>
+pub async fn delete_for_resource(pool: &SqlitePool, resource_id: i64) -> Result<()>
 ```
+
+- `upsert` sets status to `'ok'` on successful extraction
+- `mark_pending` creates/updates to `'pending'` when extraction starts
+- `mark_failed` sets status to `'failed'` on extraction error
+- `delete_for_resource` used when URL or file_path changes (invalidation)
 
 Wire into `src/models/mod.rs`.
 
@@ -152,9 +170,9 @@ Wire into `src/models/mod.rs`.
 
 ## Step 6: Handler — Reader View
 
-**File**: `src/handlers/resources.rs` (add to existing)
+**File**: `src/handlers/reader.rs` (new file, separate from resources handler)
 
-New handler function:
+Reader-specific handlers in their own module for cleanliness:
 
 ```rust
 pub async fn read_view(
@@ -162,11 +180,38 @@ pub async fn read_view(
     Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
     let r = resource::get(&pool, id).await?.ok_or(AppError::NotFound)?;
-    let content = reading::get_for_resource(&pool, id).await?
-        .ok_or(AppError::NotFound)?;
-    Ok(view::reader_page(&r, &content))
+
+    // Guard: only resources with a URL (article/blog/paper) or file_path can be read
+    let can_read = (r.url.is_some() && matches!(r.kind.as_str(), "article" | "blog" | "paper"))
+                   || r.file_path.is_some();
+    if !can_read { return Err(AppError::NotFound); }
+
+    let content = reading::get_for_resource(&pool, id).await?;
+
+    match content {
+        Some(c) if c.status == "ok" => Ok(view::reader_page(&r, &c)),
+        Some(c) if c.status == "pending" => Ok(view::reader_pending_page(&r)),
+        Some(c) if c.status == "failed" => Ok(view::reader_failed_page(&r)),
+        None => {
+            // No extraction attempted yet — kick one off and show pending
+            trigger_extraction(&pool, &r).await;
+            Ok(view::reader_pending_page(&r))
+        }
+        _ => Ok(view::reader_failed_page(&r)),
+    }
 }
 ```
+
+This status-driven approach means clicking "read" always does something useful:
+- First visit → triggers extraction, shows auto-refreshing "extracting..." page
+- Extraction done → shows the reader
+- Extraction failed → shows error with retry button
+
+The `reader_pending_page` auto-refreshes via
+`<script>setTimeout(function(){ location.reload(); }, 3000);</script>` so the
+user just sees the reader appear once extraction completes.
+
+Wire into `src/handlers/mod.rs`.
 
 ---
 
@@ -174,10 +219,11 @@ pub async fn read_view(
 
 **File**: `src/main.rs`
 
-Add the route:
+Add two routes:
 
 ```rust
-.route("/resources/:id/read", get(handlers::resources::read_view))
+.route("/resources/:id/read", get(handlers::reader::read_view))
+.route("/resources/:id/read/refresh", post(handlers::reader::refresh_content))
 ```
 
 ---
@@ -186,62 +232,52 @@ Add the route:
 
 **File**: `src/views/reader.rs` (new)
 
-A dedicated, distraction-free reading layout. Unlike the standard `page()`
-layout, the reader uses a more focused design:
+Three template functions for the reader's three states:
+
+### `reader_page` — the main reader view (status = "ok")
+
+Uses the standard `page()` layout but with reader-specific content. The
+article body renders inside a `.reader-content` container styled by `reader.css`.
 
 ```rust
 pub fn reader_page(resource: &Resource, content: &ReadingContent) -> Markup {
-    html! {
-        (DOCTYPE)
-        html lang="en" {
-            head {
-                meta charset="utf-8";
-                meta name="viewport" content="width=device-width, initial-scale=1";
-                title { (resource.title) " — reader — rl" }
-                link rel="stylesheet" href="/static/app.css";
-                link rel="stylesheet" href="/static/reader.css";
-            }
-            body.reader-body {
-                // Minimal top bar: back link, title, reading time
-                header.reader-header {
-                    a.reader-back href=(format!("/resources/{}", resource.id)) { "< back" }
-                    span.reader-title { (resource.title) }
-                    span.reader-meta {
-                        (reading_time(content.word_count))
-                    }
-                }
-
-                // Progress bar at top of viewport
-                div.reader-progress {
-                    div.reader-progress-bar #progress-bar {}
-                }
-
-                // Article content
-                article.reader-content {
-                    @if let Some(author) = &resource.author {
-                        p.reader-byline { (author) }
-                    }
-                    (PreEscaped(&content.content_html))
-                }
-
-                // Keyboard shortcut help (toggled with ?)
-                div.reader-help #reader-help style="display:none" {
-                    h3 { "keyboard shortcuts" }
-                    p { code { "j/k" } " — scroll down/up" }
-                    p { code { "g g" } " — go to top" }
-                    p { code { "G" } " — go to bottom" }
-                    p { code { "q" } " — back to resource" }
-                    p { code { "?" } " — toggle this help" }
-                }
-
-                script src="/static/reader.js" {}
-            }
-        }
-    }
+    // Uses page() layout but renders article body + reader chrome
+    // Header: back link to resource, title, author, word count, reading time, refresh button
+    // Progress bar: fixed 2px bar at top, filled by reader.js as user scrolls
+    // Article body: content.content_html rendered via PreEscaped inside article.reader-content
+    // Help panel: hidden by default, toggled with ? key
+    // Script: reader.js for keyboard nav + progress
 }
+```
 
+### `reader_pending_page` — extraction in progress (status = "pending")
+
+```rust
+pub fn reader_pending_page(resource: &Resource) -> Markup {
+    // Shows "extracting content..." flash message
+    // Auto-refreshes after 3 seconds via inline JS setTimeout
+    // Back link to resource detail
+}
+```
+
+### `reader_failed_page` — extraction failed (status = "failed")
+
+```rust
+pub fn reader_failed_page(resource: &Resource) -> Markup {
+    // Shows error flash explaining possible causes:
+    //   - URL: page may require JS, block bots, or have unusual structure
+    //   - PDF: may be image-based (scanned) or corrupted
+    // Retry button (POST to /resources/:id/read/refresh)
+    // "Open original" link if URL exists
+    // Back link to resource detail
+}
+```
+
+### `reading_time` helper
+
+```rust
 fn reading_time(words: i64) -> String {
-    let mins = (words as f64 / 200.0).ceil() as i64;
+    let mins = (words as f64 / 230.0).ceil() as i64;  // ~230 WPM average
     if mins <= 1 { "1 min read".into() }
     else { format!("{mins} min read") }
 }
@@ -454,49 +490,57 @@ Minimal vanilla JS for vim-style keyboard navigation and scroll progress:
 
 **File**: `src/views/resources.rs`
 
-Modify `detail_page()` to show a "read" button when reading content exists.
-The handler will pass a boolean `has_reading_content` flag:
+Modify `detail_page()` to show a "read" button when the resource has a readable
+source. Since the reader handler does on-demand extraction (Step 6), the button
+should always appear for resources that *could* be read — the reader page
+itself handles the pending/failed states:
 
 ```rust
 // In the row-actions div, add before "edit":
-@if has_reading_content {
-    a.btn href=(format!("/resources/{}/read", r.id)) { "read" }
+@let has_readable_source = (r.url.is_some() && matches!(r.kind.as_str(), "article" | "blog" | "paper"))
+                           || r.file_path.is_some();
+@if has_readable_source {
+    a.btn.primary href=(format!("/resources/{}/read", r.id)) { "read" }
 }
 ```
 
-Update the `show` handler in `handlers/resources.rs` to query
-`reading::has_content()` and pass it to the view.
+No extra DB query needed in the `show` handler — the button visibility is based
+purely on the resource's existing fields.
 
 ---
 
-## Step 12: Manual Re-Extract Action
+## Step 12: Refresh + Invalidation
 
-**File**: `src/handlers/resources.rs`
+### Refresh endpoint
 
-Add a `POST /resources/:id/extract` endpoint that re-triggers content
-extraction on demand (useful if the first extraction failed or content changed):
+**File**: `src/handlers/reader.rs`
+
+`POST /resources/:id/read/refresh` — force re-extraction (used from both the
+reader failed page and the reader header's refresh button):
 
 ```rust
-pub async fn re_extract(
+pub async fn refresh_content(
     State(pool): State<SqlitePool>,
     Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
     let r = resource::get(&pool, id).await?.ok_or(AppError::NotFound)?;
-    // Spawn extraction
-    if let Some(u) = &r.url {
-        let u = u.clone(); let pool2 = pool.clone();
-        tokio::spawn(async move { reader::extract_url_readable(&pool2, id, &u).await; });
-    }
-    if let Some(fp) = &r.file_path {
-        let fp = fp.clone(); let pool2 = pool.clone();
-        tokio::spawn(async move { reader::extract_pdf_readable(&pool2, id, &fp).await; });
-    }
-    Ok(Redirect::to(&format!("/resources/{id}")))
+    reading::delete_for_resource(&pool, id).await?;
+    trigger_extraction(&pool, &r).await;
+    Ok(Redirect::to(&format!("/resources/{id}/read")))
 }
 ```
 
-Add a small "extract" or "refresh" button on the resource detail page that
-posts to this endpoint.
+### Content invalidation on source change
+
+**File**: `src/handlers/resources.rs`
+
+When a resource's URL or file_path changes via `update()` or `quick_set()`,
+delete the existing readable content so it gets re-extracted on next "read":
+
+```rust
+// In update() and quick_set(), after updating URL or file_path:
+reading::delete_for_resource(&pool, id).await?;
+```
 
 ---
 
@@ -524,18 +568,25 @@ Steps 6 and 7 can be done in parallel.
 
 ## Edge Cases & Error Handling
 
-- **No readable content yet**: Don't show "read" button. Show a flash/hint
-  that content is being extracted if resource was just created.
-- **Extraction failure**: Log via tracing (existing pattern). "read" button
-  stays hidden. User can retry via "re-extract" button.
-- **Very large documents**: `content_html` could be large. This is fine for
-  SQLite (up to 1GB per field). Consider lazy-loading sections later if needed.
+- **First click with no content yet**: Reader handler triggers extraction
+  on-demand and shows auto-refreshing "extracting..." page (3s refresh)
+- **Extraction failure**: Status set to `'failed'`, reader shows error page
+  with retry button and "open original" link. Logged via tracing.
+- **Concurrent extraction requests**: `mark_pending` is idempotent; if a user
+  refreshes the pending page, no duplicate extraction is spawned (check status
+  before spawning)
+- **Very large documents**: `content_html` could be large. Fine for SQLite
+  (up to 1GB per field). Sanity-check: truncate if > 2MB as a safety net.
 - **Non-article resources**: Books/papers with file_path get PDF extraction.
   Repos get no reader content (no "read" button). Articles/blogs get URL
-  extraction.
-- **Content already exists**: Upsert (INSERT OR REPLACE) on re-extraction.
-- **Resources without URL or file_path**: No extraction triggered, no "read"
-  button.
+  extraction. Papers with URL also get URL extraction.
+- **URL/file_path changes**: Existing readable content is invalidated
+  (deleted) so the next "read" click triggers fresh extraction
+- **Resources without URL or file_path**: No "read" button shown. Handler
+  returns 404 if navigated to directly.
+- **Readability extraction failure fallback**: If the `readability` crate
+  fails on a URL, fall back to the existing scraper-based approach but wrap
+  text in `<p>` tags for minimal structure.
 
 ---
 
@@ -546,7 +597,8 @@ Steps 6 and 7 can be done in parallel.
 | `migrations/0002_reading_content.sql` | Schema for stored readable content |
 | `src/models/reading.rs` | DB queries for reading_content table |
 | `src/indexing/reader.rs` | Content extraction (URL via readability, PDF via pdf-extract + formatting) |
-| `src/views/reader.rs` | Reader view Maud template |
+| `src/handlers/reader.rs` | Read view + refresh handlers |
+| `src/views/reader.rs` | Reader view Maud templates (ok, pending, failed states) |
 | `static/reader.css` | Reader-specific styles |
 | `static/reader.js` | Keyboard nav + progress bar |
 
@@ -555,10 +607,12 @@ Steps 6 and 7 can be done in parallel.
 | File | Changes |
 |------|---------|
 | `Cargo.toml` | Add `readability` dependency |
-| `src/main.rs` | Add `/resources/:id/read` and `/resources/:id/extract` routes |
+| `src/main.rs` | Add `/resources/:id/read` and `/resources/:id/read/refresh` routes |
 | `src/models/mod.rs` | Add `pub mod reading;` |
 | `src/indexing/mod.rs` | Add `pub mod reader;` |
+| `src/handlers/mod.rs` | Add `pub mod reader;` |
 | `src/views/mod.rs` | Add `pub mod reader;` |
-| `src/handlers/resources.rs` | Add `read_view`, `re_extract` handlers; wire extraction into create/update/quick_set |
-| `src/views/resources.rs` | Add "read" and "re-extract" buttons to detail page |
+| `src/handlers/resources.rs` | Wire extraction into create/update/quick_set; add invalidation on URL/file_path change |
+| `src/views/resources.rs` | Add "read" button to detail page |
+| `static/app.css` | No changes needed (reader.css is separate) |
 | `.sqlx/` | Regenerate offline query cache |
