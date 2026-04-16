@@ -42,6 +42,9 @@ async fn main() {
         .route("/resources/:id/delete", post(handlers::resources::delete))
         .route("/resources/:id/quick-set", post(handlers::resources::quick_set))
         .route("/resources/:id/open-file", get(handlers::resources::open_file))
+        // Reader
+        .route("/resources/:id/read", get(handlers::reader::read_view))
+        .route("/resources/:id/read/refresh", post(handlers::reader::refresh))
         // Notes
         .route("/resources/:rid/notes/new", get(handlers::notes::new_form))
         .route("/resources/:rid/notes", post(handlers::notes::create))
