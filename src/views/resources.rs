@@ -158,7 +158,13 @@ function promptField(rid, field, label) {
 "#))
         }
 
+        @let has_readable_source =
+            (r.url.is_some() && matches!(r.kind.as_str(), "article" | "blog" | "paper"))
+            || r.file_path.is_some();
         div.row-actions.mb {
+            @if has_readable_source {
+                a.btn.primary href=(format!("/resources/{}/read", r.id)) { "read" }
+            }
             a.btn href=(format!("/resources/{}/edit", r.id)) { "edit" }
             form method="post" action=(format!("/resources/{}/delete", r.id)) style="display:inline" {
                 button.danger type="submit"

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM reading_content WHERE resource_id=?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "40d1bd91c5e0cbe4750a93e4378bc21e7cee60dc6ba7482aa763d89e2472f731"
+}

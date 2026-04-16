@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO reading_content (resource_id, source_type, status)\n         VALUES (?, ?, 'pending')\n         ON CONFLICT(resource_id) DO UPDATE SET\n            source_type=excluded.source_type,\n            status='pending',\n            extracted_at=unixepoch()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "935702a87a70428cc5c2d15f0c4a03c8c09ee0329ee7052b5176b63e43c686ca"
+}

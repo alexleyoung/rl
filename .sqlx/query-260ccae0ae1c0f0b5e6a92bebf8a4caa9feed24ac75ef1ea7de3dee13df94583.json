@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n            id AS \"id!: i64\",\n            resource_id AS \"resource_id!: i64\",\n            content_html AS \"content_html!: String\",\n            content_text AS \"content_text!: String\",\n            source_type AS \"source_type!: String\",\n            word_count AS \"word_count!: i64\",\n            status AS \"status!: String\",\n            extracted_at AS \"extracted_at!: i64\"\n         FROM reading_content WHERE resource_id=?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: i64",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "resource_id!: i64",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "content_html!: String",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "content_text!: String",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "source_type!: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "word_count!: i64",
+        "ordinal": 5,
+        "type_info": "Int64"
+      },
+      {
+        "name": "status!: String",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "extracted_at!: i64",
+        "ordinal": 7,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "260ccae0ae1c0f0b5e6a92bebf8a4caa9feed24ac75ef1ea7de3dee13df94583"
+}
