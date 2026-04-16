@@ -7,8 +7,8 @@ use sqlx::SqlitePool;
 
 use crate::{
     error::AppError,
-    indexing::{pdf as pdf_indexer, url as url_indexer},
-    models::{note, resource, tag},
+    indexing::{pdf as pdf_indexer, reader as reader_indexer, url as url_indexer},
+    models::{note, reading, resource, tag},
     views::resources as view,
 };
 
@@ -80,6 +80,14 @@ pub async fn create(
             });
         }
     }
+    // Also extract readable content for the reader view
+    spawn_reader_extraction(
+        &pool,
+        id,
+        kind,
+        input.url.as_deref(),
+        input.file_path.as_deref(),
+    );
     Ok(Redirect::to(&format!("/resources/{id}")))
 }
 
@@ -142,6 +150,15 @@ pub async fn update(
             });
         }
     }
+    // Invalidate existing reader content and re-extract if a source is set.
+    reading::delete_for_resource(&pool, id).await?;
+    spawn_reader_extraction(
+        &pool,
+        id,
+        kind,
+        input.url.as_deref(),
+        input.file_path.as_deref(),
+    );
     Ok(Redirect::to(&format!("/resources/{id}")))
 }
 
@@ -171,25 +188,40 @@ pub async fn quick_set(
         "url" => {
             sqlx::query!("UPDATE resources SET url=? WHERE id=?", val, id)
                 .execute(&pool).await?;
+            // URL changed: invalidate any existing reader content.
+            reading::delete_for_resource(&pool, id).await?;
             // Trigger URL indexing if article/blog
             if matches!(r.kind.as_str(), "article" | "blog") {
-                if let Some(u) = val {
+                if let Some(u) = val.as_deref() {
+                    let u = u.to_string();
                     let pool2 = pool.clone();
                     tokio::spawn(async move {
                         url_indexer::index_url(&pool2, id, &u).await;
                     });
                 }
             }
+            // Kick off reader extraction for the new URL / existing file.
+            spawn_reader_extraction(
+                &pool, id, r.kind.as_str(),
+                val.as_deref(), r.file_path.as_deref(),
+            );
         }
         "file_path" => {
             sqlx::query!("UPDATE resources SET file_path=? WHERE id=?", val, id)
                 .execute(&pool).await?;
-            if let Some(fp) = val {
+            // file_path changed: invalidate any existing reader content.
+            reading::delete_for_resource(&pool, id).await?;
+            if let Some(fp) = val.as_deref() {
+                let fp = fp.to_string();
                 let pool2 = pool.clone();
                 tokio::spawn(async move {
                     pdf_indexer::index_pdf(&pool2, id, &fp).await;
                 });
             }
+            spawn_reader_extraction(
+                &pool, id, r.kind.as_str(),
+                r.url.as_deref(), val.as_deref(),
+            );
         }
         _ => {}
     }
@@ -227,4 +259,33 @@ pub async fn open_file(
 
 fn non_empty(s: Option<String>) -> Option<String> {
     s.and_then(|v| if v.trim().is_empty() { None } else { Some(v) })
+}
+
+/// Spawn reader extraction for a resource based on its kind / url / file_path.
+/// URL extraction is preferred when both are present (HTML usually has better
+/// structure than the PDF text layer).
+fn spawn_reader_extraction(
+    pool: &SqlitePool,
+    id: i64,
+    kind: &str,
+    url: Option<&str>,
+    file_path: Option<&str>,
+) {
+    if let Some(u) = url {
+        if matches!(kind, "article" | "blog" | "paper") {
+            let u = u.to_string();
+            let pool2 = pool.clone();
+            tokio::spawn(async move {
+                reader_indexer::extract_url(&pool2, id, &u).await;
+            });
+            return;
+        }
+    }
+    if let Some(fp) = file_path {
+        let fp = fp.to_string();
+        let pool2 = pool.clone();
+        tokio::spawn(async move {
+            reader_indexer::extract_pdf(&pool2, id, &fp).await;
+        });
+    }
 }
