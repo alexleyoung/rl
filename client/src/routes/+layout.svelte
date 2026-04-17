@@ -4,6 +4,7 @@
   import { page } from '$app/state';
   import CommandPalette from '$lib/CommandPalette.svelte';
   import AddModal from '$lib/AddModal.svelte';
+  import HelpOverlay from '$lib/HelpOverlay.svelte';
   import { getBindingsForAction, defaultKeymap } from '$lib/keymap';
 
   interface Props { children: import('svelte').Snippet }
@@ -11,6 +12,7 @@
 
   let paletteOpen = $state(false);
   let addOpen = $state(false);
+  let helpOpen = $state(false);
 
   function openPalette() { paletteOpen = true; }
   function openAdd() { addOpen = true; }
@@ -51,7 +53,7 @@
       case 'go to reading': goto('/?status=reading'); return true;
       case 'go to queue': goto('/?status=queue'); return true;
       case 'go to done': goto('/?status=done'); return true;
-      case 'this help': goto('/settings/keymap'); return true;
+      case 'this help': helpOpen = true; return true;
       default: return false;
     }
   }
@@ -60,6 +62,7 @@
     if (e.key === 'Escape') {
       if (paletteOpen) { paletteOpen = false; return; }
       if (addOpen) { addOpen = false; return; }
+      if (helpOpen) { helpOpen = false; return; }
     }
     const inInput = isTypingTarget(e.target);
     // Global bindings: always fire (even from inputs) if they include ⌘
@@ -107,6 +110,7 @@
 
 <CommandPalette bind:open={paletteOpen} />
 <AddModal bind:open={addOpen} />
+<HelpOverlay bind:open={helpOpen} />
 
 <style>
   .spacer { flex: 1; }
