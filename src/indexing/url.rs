@@ -59,7 +59,7 @@ fn html_to_text(html: &str) -> String {
 
     // Remove script and style elements
     let sel_body = Selector::parse("body").unwrap();
-    let sel_skip = Selector::parse("script, style, nav, footer, header").unwrap();
+    let _sel_skip = Selector::parse("script, style, nav, footer, header").unwrap();
 
     let body = doc.select(&sel_body).next();
     let root = if let Some(b) = body { b.inner_html() } else { html.to_string() };

@@ -8,6 +8,11 @@
 /data
 node_modules/
 cm-build/node_modules/
+client/.svelte-kit/
+client/build/
+client/.env
+client/.env.*
+!client/.env.example
 
 
 # Added by cargo
