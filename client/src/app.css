@@ -15,6 +15,19 @@
   --border:  var(--line-2);
   --danger:  #c08080;
 }
+html[data-theme="light"] {
+  --bg:      #f5f4f0;
+  --bg-2:    #eceae4;
+  --ink:     #1a1916;
+  --ink-2:   #6b6860;
+  --ink-3:   #9c9a94;
+  --line:    #d4d2cc;
+  --line-2:  #c4c2bc;
+  --accent:  #2a6fa8;
+  --hl:      #f0e8c0;
+  --hl-b:    #c4a84e;
+  --danger:  #a04040;
+}
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
 body {

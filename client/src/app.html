@@ -9,7 +9,10 @@
     <title>rl</title>
     %sveltekit.head%
   </head>
-  <body data-theme="dark">
+  <body>
+    <script>
+      document.documentElement.setAttribute('data-theme', localStorage.getItem('rl_theme') || 'dark');
+    </script>
     <div id="svelte">%sveltekit.body%</div>
   </body>
 </html>
