@@ -25,13 +25,15 @@
     // binding is like "⌘K", "⌘⇧H", "/", "?", "g i" (chord — not handled here)
     if (binding.includes(' ')) return false; // chords handled separately
     const parts = binding.split('');
-    const needMeta = parts.includes('⌘');
+    const needMeta  = parts.includes('⌘'); // macOS Command — metaKey only
+    const needCtrl  = parts.includes('⌃'); // explicit Ctrl — ctrlKey only
     const needShift = parts.includes('⇧');
-    const mainKey = parts.filter(p => p !== '⌘' && p !== '⇧' && p !== '⌥' && p !== '⌃').join('');
+    const mainKey = parts.filter(p => !'⌘⇧⌥⌃'.includes(p)).join('');
     if (!mainKey) return false;
-    const metaOrCtrl = e.metaKey || e.ctrlKey;
-    if (needMeta && !metaOrCtrl) return false;
-    if (!needMeta && metaOrCtrl) return false;
+    if (needMeta  && !e.metaKey)  return false;
+    if (!needMeta && e.metaKey)   return false;
+    if (needCtrl  && !e.ctrlKey)  return false;
+    if (!needCtrl && !needMeta && e.ctrlKey) return false; // unmodified binding shouldn't fire on ctrl
     if (needShift && !e.shiftKey) return false;
     return e.key.toLowerCase() === mainKey.toLowerCase();
   }
