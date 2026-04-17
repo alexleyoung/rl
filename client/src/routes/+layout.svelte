@@ -13,9 +13,16 @@
   let paletteOpen = $state(false);
   let addOpen = $state(false);
   let helpOpen = $state(false);
+  let chordPending = $state<string | null>(null);
+  let chordTimer: ReturnType<typeof setTimeout> | null = null;
 
   function openPalette() { paletteOpen = true; }
   function openAdd() { addOpen = true; }
+
+  function clearChord() {
+    chordPending = null;
+    if (chordTimer) { clearTimeout(chordTimer); chordTimer = null; }
+  }
 
   function isTypingTarget(el: EventTarget | null) {
     if (!(el instanceof HTMLElement)) return false;
@@ -60,11 +67,42 @@
 
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') {
+      if (chordPending) { clearChord(); e.preventDefault(); return; }
       if (paletteOpen) { paletteOpen = false; return; }
       if (addOpen) { addOpen = false; return; }
       if (helpOpen) { helpOpen = false; return; }
     }
     const inInput = isTypingTarget(e.target);
+
+    // If we have a pending chord first-key, try to complete it
+    if (chordPending) {
+      const candidate = `${chordPending} ${e.key.toLowerCase()}`;
+      clearChord();
+      for (const action of Object.keys(defaultKeymap)) {
+        const bindings = getBindingsForAction(action);
+        for (const b of bindings) {
+          if (b === candidate) {
+            if (fireAction(action)) { e.preventDefault(); return; }
+          }
+        }
+      }
+      return; // consumed regardless
+    }
+
+    // Check if this key starts any chord
+    if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const k = e.key.toLowerCase();
+      const startsChord = Object.values(defaultKeymap).some(entry =>
+        getBindingsForAction(entry.action).some(b => b.includes(' ') && b.split(' ')[0] === k)
+      );
+      if (startsChord) {
+        chordPending = k;
+        chordTimer = setTimeout(clearChord, 1500);
+        e.preventDefault();
+        return;
+      }
+    }
+
     // Global bindings: always fire (even from inputs) if they include ⌘
     for (const action of Object.keys(defaultKeymap)) {
       const bindings = getBindingsForAction(action);
@@ -99,6 +137,7 @@
     <a href="/" class:on={isOn('/')}>resources</a>
     <a href="/settings/keymap" class:on={isOn('/settings')}>settings</a>
     <span class="spacer"></span>
+    {#if chordPending}<span class="chord-hint"><span class="kbd">{chordPending}</span> –</span>{/if}
     <button class="nav-add" onclick={openAdd}>+ add <span class="kbd">⌘N</span></button>
     <button class="nav-search" onclick={openPalette}>search <span class="kbd">⌘K</span></button>
   </nav>
@@ -116,4 +155,5 @@
   .spacer { flex: 1; }
   .nav-add, .nav-search { color: var(--ink-2); font-size: 12px; }
   .nav-add:hover, .nav-search:hover { color: var(--ink); text-decoration: underline; }
+  .chord-hint { font-size: 12px; color: var(--ink-2); }
 </style>
