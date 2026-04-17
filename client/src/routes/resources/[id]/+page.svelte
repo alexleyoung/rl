@@ -31,20 +31,16 @@
   }
 
   function togglePdf() {
-    paneMode = paneMode === 'both' ? 'notes-only'
-             : paneMode === 'notes-only' ? 'both'
-             : paneMode === 'pdf-only' ? 'pdf-only' : 'both';
+    paneMode = paneMode === 'notes-only' ? 'both' : 'notes-only';
   }
   function toggleNotes() {
-    paneMode = paneMode === 'both' ? 'pdf-only'
-             : paneMode === 'pdf-only' ? 'both'
-             : paneMode === 'notes-only' ? 'notes-only' : 'both';
+    paneMode = paneMode === 'pdf-only' ? 'both' : 'pdf-only';
   }
-  function reopenPdf() { paneMode = paneMode === 'notes-only' ? 'both' : paneMode; }
-  function reopenNotes() { paneMode = paneMode === 'pdf-only' ? 'both' : paneMode; }
+
+  let confirmDelete = $state(false);
 
   async function deleteResource() {
-    if (!resource || !confirm(`delete "${resource.title}"?`)) return;
+    if (!confirmDelete) { confirmDelete = true; setTimeout(() => confirmDelete = false, 4000); return; }
     await api.deleteResource(rid);
     goto('/');
   }
@@ -89,15 +85,15 @@
   <div class="reader-head" style="border: 0; padding: 0; margin-bottom: 8px;">
     <div class="actions">
       <span class="muted">panes:</span>
-      <button class:on={paneMode !== 'notes-only'} onclick={() => paneMode === 'notes-only' ? reopenPdf() : togglePdf()}>pdf</button>
+      <button class:on={paneMode !== 'notes-only'} onclick={togglePdf}>pdf</button>
       <span class="dim">·</span>
-      <button class:on={paneMode !== 'pdf-only'} onclick={() => paneMode === 'pdf-only' ? reopenNotes() : toggleNotes()}>notes</button>
+      <button class:on={paneMode !== 'pdf-only'} onclick={toggleNotes}>notes</button>
       <span class="right-ml muted">{notes.length} note{notes.length === 1 ? '' : 's'}</span>
     </div>
   </div>
 
   <Panes bind:mode={paneMode} pdfLabel={`${resource.file_path ? 'pdf' : resource.url ? 'source' : 'content'}`}>
-    {#snippet pdf()}<PdfPane {resource} />{/snippet}
+    {#snippet pdf()}<PdfPane resource={resource!} />{/snippet}
     {#snippet notes()}<NotesPane {rid} note={primaryNote} oncreated={onNoteCreated} onupdated={onNoteUpdated} />{/snippet}
   </Panes>
 
@@ -106,7 +102,7 @@
     <span class="dim">·</span>
     <a href="/resources/{rid}/edit" class="muted">edit metadata</a>
     <span class="dim">·</span>
-    <button class="link-btn danger" onclick={deleteResource}>delete</button>
+    <button class="link-btn danger" onclick={deleteResource}>{confirmDelete ? 'confirm delete?' : 'delete'}</button>
   </div>
 {/if}
 

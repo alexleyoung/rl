@@ -95,10 +95,6 @@
     URL.revokeObjectURL(url);
   }
 
-  function renderBinding(b: Binding) {
-    return b.split(' ').map(tok => tok.split('').map(c => ({ c }))); // not used
-  }
-
   function tokens(b: Binding): string[] {
     return b.split(' ').filter(Boolean);
   }

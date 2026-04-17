@@ -44,6 +44,7 @@
 {/if}
 
 <style>
-  .pdf-iframe { width: 100%; height: 600px; border: 0; background: #fff; }
-  .extracted { max-width: none; }
+  :global(.pdf-body) { padding: 0; display: flex; flex-direction: column; }
+  .pdf-iframe { width: 100%; flex: 1; min-height: 400px; border: 0; display: block; }
+  .extracted { max-width: none; padding: 14px 16px; }
 </style>
