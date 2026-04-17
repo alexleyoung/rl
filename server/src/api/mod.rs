@@ -29,6 +29,7 @@ pub fn router() -> Router<AppState> {
         .route("/resources/:id/tags",         post(resources::set_tags))
         .route("/resources/:id/read",         post(resources::mark_read))
         .route("/resources/:id/file",         get(files::serve))
+        .route("/resources/:id/content",      get(resources::get_content))
         .route("/resources/:rid/notes",       get(notes::list).post(notes::create))
         .route("/resources/:rid/notes/:nid",  get(notes::show).patch(notes::update).delete(notes::delete))
         .route("/notes/:nid",                 get(notes::locate))

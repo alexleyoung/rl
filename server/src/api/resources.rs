@@ -7,7 +7,7 @@ use axum::{
 use serde::Deserialize;
 
 use crate::{
-    api::dto::{NoteDto, QuickSetDto, ResourceDetailDto, ResourceDto, ResourceInputDto, SetTagsDto},
+    api::dto::{NoteDto, QuickSetDto, ReadingContentDto, ResourceDetailDto, ResourceDto, ResourceInputDto, SetTagsDto},
     error::AppError,
     indexing::{pdf as pdf_indexer, reader as reader_indexer, url as url_indexer},
     models::{note, reading, resource},
@@ -17,15 +17,17 @@ use crate::{
 #[derive(Deserialize)]
 pub struct TagQuery {
     pub tag: Option<String>,
+    pub status: Option<String>,
 }
 
 pub async fn list(
     State(s): State<AppState>,
     Query(q): Query<TagQuery>,
 ) -> Result<Json<Vec<ResourceDto>>, AppError> {
-    let rows = match &q.tag {
-        Some(t) => resource::list_by_tag(&s.pool, t).await?,
-        None => resource::list(&s.pool).await?,
+    let rows = match (&q.tag, &q.status) {
+        (Some(t), _) => resource::list_by_tag(&s.pool, t).await?,
+        (None, Some(st)) => resource::list_by_status(&s.pool, st).await?,
+        (None, None) => resource::list(&s.pool).await?,
     };
     let mut out = Vec::with_capacity(rows.len());
     for r in rows {
@@ -61,6 +63,7 @@ pub async fn create(
         author: non_empty(input.author),
         url: non_empty(input.url),
         file_path: non_empty(input.file_path),
+        status: non_empty(input.status),
         tags: None,
     };
     let id = resource::create(&s.pool, &ri).await?;
@@ -84,13 +87,14 @@ pub async fn update(
     if input.title.trim().is_empty() {
         return Err(AppError::Validation("title required".into()));
     }
-    resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
+    let existing = resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
     let ri = resource::ResourceInput {
         kind: input.kind.clone(),
         title: input.title,
         author: non_empty(input.author),
         url: non_empty(input.url),
         file_path: non_empty(input.file_path),
+        status: non_empty(input.status).or(Some(existing.status)),
         tags: None,
     };
     resource::update(&s.pool, id, &ri).await?;
@@ -148,6 +152,13 @@ pub async fn quick_set(
                 tokio::spawn(async move { reader_indexer::extract_pdf(&pool, id, &fp2).await; });
             }
         }
+        "status" => {
+            let status = val.ok_or_else(|| AppError::Validation("status required".into()))?;
+            if !matches!(status.as_str(), "inbox" | "reading" | "queue" | "done") {
+                return Err(AppError::Validation(format!("invalid status: {status}")));
+            }
+            resource::set_status(&s.pool, id, &status).await?;
+        }
         other => return Err(AppError::Validation(format!("unknown field: {other}"))),
     }
     let r = resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
@@ -162,6 +173,20 @@ pub async fn mark_read(
     resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
     resource::touch_last_read(&s.pool, id).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn get_content(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<Json<Option<ReadingContentDto>>, AppError> {
+    resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
+    let rc = reading::get(&s.pool, id).await?;
+    Ok(Json(rc.map(|c| ReadingContentDto {
+        content_html: c.content_html,
+        source_type: c.source_type,
+        word_count: c.word_count,
+        status: c.status,
+    })))
 }
 
 pub async fn set_tags(

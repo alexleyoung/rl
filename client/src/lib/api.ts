@@ -7,17 +7,19 @@ import type { NoteLocationDto } from './types/NoteLocationDto';
 import type { QuickSetDto } from './types/QuickSetDto';
 import type { TagDto } from './types/TagDto';
 import type { SearchResponseDto } from './types/SearchResponseDto';
+import type { SearchHitDto } from './types/SearchHitDto';
 import type { ApiErrorDto } from './types/ApiErrorDto';
 import type { UploadResponseDto } from './types/UploadResponseDto';
 import type { SetTagsDto } from './types/SetTagsDto';
 import type { ExtractInputDto } from './types/ExtractInputDto';
 import type { MetadataDto } from './types/MetadataDto';
+import type { ReadingContentDto } from './types/ReadingContentDto';
 
 export type {
   ResourceDto, ResourceInputDto, ResourceDetailDto,
   NoteDto, NoteInputDto, NoteLocationDto,
-  QuickSetDto, SetTagsDto, TagDto, SearchResponseDto, ApiErrorDto,
-  UploadResponseDto, ExtractInputDto, MetadataDto,
+  QuickSetDto, SetTagsDto, TagDto, SearchResponseDto, SearchHitDto, ApiErrorDto,
+  UploadResponseDto, ExtractInputDto, MetadataDto, ReadingContentDto,
 };
 
 const BASE = '/api/v1';
@@ -49,8 +51,19 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   // Resources
-  listResources: (tag?: string) =>
-    req<ResourceDto[]>(`/resources${tag ? `?tag=${encodeURIComponent(tag)}` : ''}`),
+  listResources: (opts?: { tag?: string; status?: string }) => {
+    const qs = new URLSearchParams();
+    if (opts?.tag) qs.set('tag', opts.tag);
+    if (opts?.status) qs.set('status', opts.status);
+    const suffix = qs.toString() ? `?${qs}` : '';
+    return req<ResourceDto[]>(`/resources${suffix}`);
+  },
+
+  setStatus: (id: number, status: string) =>
+    req<ResourceDto>(`/resources/${id}/quick-set`, {
+      method: 'POST',
+      body: JSON.stringify({ field: 'status', value: status } satisfies QuickSetDto),
+    }),
 
   getResource: (id: number) =>
     req<ResourceDetailDto>(`/resources/${id}`),
@@ -74,6 +87,9 @@ export const api = {
     req<void>(`/resources/${id}/read`, { method: 'POST' }),
 
   fileUrl: (id: number) => `${BASE}/resources/${id}/file`,
+
+  getContent: (id: number) =>
+    req<ReadingContentDto | null>(`/resources/${id}/content`),
 
   // Notes
   listNotes: (rid: number) =>

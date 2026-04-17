@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE resources SET kind=?, title=?, author=?, url=?, file_path=?, status=?\n         WHERE id=?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "e63d19f155b7f72d8258e7ec5f00243451c39271c061fadb1215802d824d4c78"
+}

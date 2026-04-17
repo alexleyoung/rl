@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, kind, title, author, url, file_path, added_at, last_read_at, status\n         FROM resources WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "kind",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "author",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "url",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "file_path",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "added_at",
+        "ordinal": 6,
+        "type_info": "Int64"
+      },
+      {
+        "name": "last_read_at",
+        "ordinal": 7,
+        "type_info": "Int64"
+      },
+      {
+        "name": "status",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "c403b26dff3145ca746913ca845b67d1a3d187b38b2b32edfbf670cc5b54db23"
+}

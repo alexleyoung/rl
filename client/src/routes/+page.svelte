@@ -1,140 +1,114 @@
 <script lang="ts">
-  import { api, type ResourceDto, type TagDto } from '$lib/api';
+  import { api, type ResourceDto } from '$lib/api';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
 
-  type SortKey = 'tag' | 'title' | 'kind' | 'added' | 'read';
-  type SortDir = 'asc' | 'desc';
+  type Status = 'inbox' | 'reading' | 'queue' | 'done' | 'all';
 
   let resources = $state<ResourceDto[]>([]);
-  let tags = $state<TagDto[]>([]);
-  let activeTag = $state<string | null>(null);
-  let sort = $state<SortKey>('tag');
-  let dir = $state<SortDir>('asc');
+  let status = $state<Status>('inbox');
+  let filter = $state('');
   let error = $state('');
+  let selected = $state(0);
 
   async function load() {
     try {
-      const params = page.url.searchParams;
-      const tag = params.get('tag') ?? undefined;
-      activeTag = tag ?? null;
-      sort = (params.get('sort') as SortKey) || 'tag';
-      dir = (params.get('dir') as SortDir) || 'asc';
-      [resources, tags] = await Promise.all([api.listResources(tag), api.listTags()]);
+      const st = status === 'all' ? undefined : status;
+      resources = await api.listResources({ status: st });
     } catch (e: any) {
       error = e.message;
     }
   }
 
-  $effect(() => { load(); });
-
-  // Client-side sort
-  let sorted = $derived.by(() => {
-    const cmp = (a: ResourceDto, b: ResourceDto): number => {
-      let av: string | number, bv: string | number;
-      switch (sort) {
-        case 'tag':   av = a.tags[0] ?? '\uffff'; bv = b.tags[0] ?? '\uffff'; break;
-        case 'title': av = a.title.toLowerCase();  bv = b.title.toLowerCase();  break;
-        case 'kind':  av = a.kind;                  bv = b.kind;                  break;
-        case 'added': av = Number(a.added_at);      bv = Number(b.added_at);      break;
-        case 'read':  av = Number(a.last_read_at ?? 0); bv = Number(b.last_read_at ?? 0); break;
-      }
-      if (av < bv) return -1;
-      if (av > bv) return 1;
-      return 0;
-    };
-    const result = [...resources].sort(cmp);
-    return dir === 'desc' ? result.reverse() : result;
+  $effect(() => {
+    const s = page.url.searchParams.get('status') as Status | null;
+    status = s && ['inbox','reading','queue','done','all'].includes(s) ? s : 'inbox';
+    load();
   });
 
-  function setSort(key: SortKey) {
-    const params = new URLSearchParams(page.url.searchParams);
-    if (sort === key) {
-      params.set('dir', dir === 'asc' ? 'desc' : 'asc');
-    } else {
-      params.set('sort', key);
-      params.set('dir', 'asc');
-    }
-    goto(`/?${params}`, { replaceState: true, keepFocus: true });
+  function setStatus(s: Status) {
+    const qs = new URLSearchParams(page.url.searchParams);
+    qs.set('status', s);
+    goto(`/?${qs}`, { replaceState: true, keepFocus: true });
   }
 
-  function filterTag(name: string) {
-    const params = new URLSearchParams(page.url.searchParams);
-    if (activeTag === name) params.delete('tag');
-    else params.set('tag', name);
-    goto(`/?${params}`, { replaceState: true });
+  async function toggleDone(r: ResourceDto, e: Event) {
+    e.stopPropagation();
+    const next = r.status === 'done' ? 'inbox' : 'done';
+    try {
+      const updated = await api.setStatus(Number(r.id), next);
+      resources = resources.map(x => x.id === r.id ? updated : x);
+    } catch (ex: any) { error = ex.message; }
   }
 
-  async function deleteResource(id: number, title: string) {
-    if (!confirm(`Delete "${title}"?`)) return;
-    await api.deleteResource(id);
-    resources = resources.filter(r => Number(r.id) !== id);
+  function open(r: ResourceDto) {
+    goto(`/resources/${r.id}`);
   }
 
-  const LABELS: Record<SortKey, string> = {
-    tag: 'tag', title: 'title', kind: 'kind', added: 'added', read: 'last read',
-  };
+  let visible = $derived.by(() => {
+    const f = filter.trim().toLowerCase();
+    if (!f) return resources;
+    return resources.filter(r =>
+      r.title.toLowerCase().includes(f) ||
+      (r.author ?? '').toLowerCase().includes(f) ||
+      r.tags.some(t => t.toLowerCase().includes(f))
+    );
+  });
 
-  function thClass(key: SortKey) {
-    return sort === key ? `sort-active ${dir}` : '';
-  }
+  let unreadCount = $derived(resources.filter(r => !r.last_read_at).length);
+
+  function fmtTag(t: string) { return '#' + t; }
 </script>
+
+<h2 class="title">resources</h2>
 
 {#if error}<p class="flash err">{error}</p>{/if}
 
-<div class="tags">
-  {#each tags as t}
-    <button class="tag" class:active={activeTag === t.name} onclick={() => filterTag(t.name)}>
-      {t.name} <span class="dim">({t.count})</span>
-    </button>
-  {/each}
+<div class="controls">
+  <div class="search">
+    <input
+      type="text"
+      bind:value={filter}
+      placeholder="filter this list…  /  to focus, ⌘K for global"
+    />
+  </div>
+  <div class="seg">
+    {#each (['inbox','reading','queue','done','all'] as Status[]) as s}
+      <button class:on={status === s} onclick={() => setStatus(s)}>{s}</button>
+    {/each}
+  </div>
 </div>
 
-<table>
-  <thead>
-    <tr>
-      {#each (['title', 'kind', 'tag', 'added', 'read'] as SortKey[]) as key}
-        <th>
-          <button class="sort-btn {thClass(key)}" onclick={() => setSort(key)}>
-            {LABELS[key]}{#if sort === key}<span class="arrow">{dir === 'asc' ? ' ↑' : ' ↓'}</span>{/if}
-          </button>
-        </th>
-      {/each}
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each sorted as r}
-      <tr>
-        <td><a href="/resources/{r.id}">{r.title}</a></td>
-        <td><span class="kind">{r.kind}</span></td>
-        <td class="small dim">{r.tags.join(', ')}</td>
-        <td class="small dim">{r.added_at ? new Date(Number(r.added_at) * 1000).toLocaleDateString() : ''}</td>
-        <td class="small dim">{r.last_read_at ? new Date(Number(r.last_read_at) * 1000).toLocaleDateString() : '—'}</td>
-        <td>
-          <span class="row-actions">
-            <a href="/resources/{r.id}/edit" class="btn small">edit</a>
-            <button class="danger small" onclick={() => deleteResource(Number(r.id), r.title)}>del</button>
-          </span>
-        </td>
-      </tr>
-    {/each}
-  </tbody>
-</table>
+<div class="status-row">
+  <span>{status} · {visible.length} {visible.length === 1 ? 'item' : 'items'}{#if status === 'inbox' && unreadCount > 0} · {unreadCount} unread{/if}</span>
+</div>
 
-<style>
-  .sort-btn {
-    background: none;
-    border: none;
-    padding: 0;
-    font: inherit;
-    font-size: inherit;
-    font-weight: bold;
-    color: var(--dim);
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  .sort-btn:hover { color: var(--fg); }
-  .sort-btn.sort-active { color: var(--fg); }
-  .arrow { color: var(--accent); }
-</style>
+<ul class="list">
+  {#each visible as r, i}
+    <li
+      class="row-item"
+      class:read={r.status === 'done' || r.last_read_at}
+      class:selected={selected === i}
+      onmouseenter={() => selected = i}
+      role="presentation"
+    >
+      <button class="ck" class:done={r.status === 'done'} onclick={(e) => toggleDone(r, e)} aria-label="toggle done">
+        {r.status === 'done' ? '✓' : '○'}
+      </button>
+      <span class="ty">{r.kind}</span>
+      <a class="title" href="/resources/{r.id}" onclick={(e) => { e.preventDefault(); open(r); }}>
+        {r.title}{#if r.author} — {r.author}{/if}
+      </a>
+      <span class="tags">
+        {#each r.tags as t, i}
+          {#if i > 0}{' '}{/if}
+          <a href="/t/{encodeURIComponent(t)}">{fmtTag(t)}</a>
+        {/each}
+      </span>
+    </li>
+  {/each}
+</ul>
+
+{#if visible.length === 0 && !error}
+  <p class="dim" style="margin-top:18px">nothing here. press <span class="kbd">⌘N</span> to add.</p>
+{/if}

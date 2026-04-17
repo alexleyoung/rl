@@ -11,6 +11,7 @@ pub struct Resource {
     pub file_path: Option<String>,
     pub added_at: i64,
     pub last_read_at: Option<i64>,
+    pub status: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -20,13 +21,24 @@ pub struct ResourceInput {
     pub author: Option<String>,
     pub url: Option<String>,
     pub file_path: Option<String>,
+    pub status: Option<String>,
     pub tags: Option<String>, // comma-separated
 }
 
 pub async fn list(pool: &SqlitePool) -> sqlx::Result<Vec<Resource>> {
     sqlx::query_as!(Resource,
-        "SELECT id, kind, title, author, url, file_path, added_at, last_read_at
+        "SELECT id, kind, title, author, url, file_path, added_at, last_read_at, status
          FROM resources ORDER BY added_at DESC"
+    )
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn list_by_status(pool: &SqlitePool, status: &str) -> sqlx::Result<Vec<Resource>> {
+    sqlx::query_as!(Resource,
+        r#"SELECT id as "id!", kind, title, author, url, file_path, added_at, last_read_at, status
+           FROM resources WHERE status = ? ORDER BY added_at DESC"#,
+        status
     )
     .fetch_all(pool)
     .await
@@ -34,7 +46,7 @@ pub async fn list(pool: &SqlitePool) -> sqlx::Result<Vec<Resource>> {
 
 pub async fn get(pool: &SqlitePool, id: i64) -> sqlx::Result<Option<Resource>> {
     sqlx::query_as!(Resource,
-        "SELECT id, kind, title, author, url, file_path, added_at, last_read_at
+        "SELECT id, kind, title, author, url, file_path, added_at, last_read_at, status
          FROM resources WHERE id = ?",
         id
     )
@@ -43,10 +55,11 @@ pub async fn get(pool: &SqlitePool, id: i64) -> sqlx::Result<Option<Resource>> {
 }
 
 pub async fn create(pool: &SqlitePool, input: &ResourceInput) -> sqlx::Result<i64> {
+    let status = input.status.as_deref().unwrap_or("inbox");
     let row = sqlx::query!(
-        "INSERT INTO resources (kind, title, author, url, file_path)
-         VALUES (?, ?, ?, ?, ?) RETURNING id",
-        input.kind, input.title, input.author, input.url, input.file_path
+        "INSERT INTO resources (kind, title, author, url, file_path, status)
+         VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+        input.kind, input.title, input.author, input.url, input.file_path, status
     )
     .fetch_one(pool)
     .await?;
@@ -54,13 +67,21 @@ pub async fn create(pool: &SqlitePool, input: &ResourceInput) -> sqlx::Result<i6
 }
 
 pub async fn update(pool: &SqlitePool, id: i64, input: &ResourceInput) -> sqlx::Result<()> {
+    let status = input.status.as_deref().unwrap_or("inbox");
     sqlx::query!(
-        "UPDATE resources SET kind=?, title=?, author=?, url=?, file_path=?
+        "UPDATE resources SET kind=?, title=?, author=?, url=?, file_path=?, status=?
          WHERE id=?",
-        input.kind, input.title, input.author, input.url, input.file_path, id
+        input.kind, input.title, input.author, input.url, input.file_path, status, id
     )
     .execute(pool)
     .await?;
+    Ok(())
+}
+
+pub async fn set_status(pool: &SqlitePool, id: i64, status: &str) -> sqlx::Result<()> {
+    sqlx::query!("UPDATE resources SET status=? WHERE id=?", status, id)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
@@ -116,7 +137,7 @@ pub async fn touch_last_read(pool: &SqlitePool, id: i64) -> sqlx::Result<()> {
 // For tag-filter on list
 pub async fn list_by_tag(pool: &SqlitePool, tag: &str) -> sqlx::Result<Vec<Resource>> {
     sqlx::query_as!(Resource,
-        "SELECT r.id, r.kind, r.title, r.author, r.url, r.file_path, r.added_at, r.last_read_at
+        "SELECT r.id, r.kind, r.title, r.author, r.url, r.file_path, r.added_at, r.last_read_at, r.status
          FROM resources r
          JOIN resource_tags rt ON rt.resource_id = r.id
          JOIN tags t ON t.id = rt.tag_id

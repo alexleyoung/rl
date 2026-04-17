@@ -14,6 +14,7 @@ pub struct ResourceDto {
     pub file_path: Option<String>,
     pub added_at: i64,
     pub last_read_at: Option<i64>,
+    pub status: String,
     pub tags: Vec<String>,
 }
 
@@ -28,6 +29,7 @@ impl ResourceDto {
             file_path: r.file_path,
             added_at: r.added_at,
             last_read_at: r.last_read_at,
+            status: r.status,
             tags,
         }
     }
@@ -44,6 +46,8 @@ pub struct ResourceInputDto {
     pub url: Option<String>,
     #[serde(default)]
     pub file_path: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
 }
@@ -161,4 +165,13 @@ pub struct MetadataDto {
     pub title: Option<String>,
     pub author: Option<String>,
     pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize, TS)]
+#[ts(export, export_to = "client/src/lib/types/")]
+pub struct ReadingContentDto {
+    pub content_html: String,
+    pub source_type: String,
+    pub word_count: i64,
+    pub status: String,
 }
