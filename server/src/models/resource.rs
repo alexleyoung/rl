@@ -22,6 +22,7 @@ pub struct ResourceInput {
     pub url: Option<String>,
     pub file_path: Option<String>,
     pub status: Option<String>,
+    #[allow(dead_code)]
     pub tags: Option<String>, // comma-separated
 }
 

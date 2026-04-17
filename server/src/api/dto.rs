@@ -145,6 +145,7 @@ pub struct SearchResponseDto {
 
 #[derive(Debug, Serialize, TS)]
 #[ts(export, export_to = "client/src/lib/types/")]
+#[allow(dead_code)]
 pub struct ApiErrorDto {
     pub code: String,
     pub message: String,

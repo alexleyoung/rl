@@ -57,6 +57,7 @@
 
   $effect(() => {
     const _ = q;
+    sel = 0;
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(runSearch, 120);
   });
@@ -93,21 +94,27 @@
     return arr;
   });
 
+  function moveDown() { sel = items.length > 0 ? Math.min(items.length - 1, sel + 1) : 0; }
+  function moveUp()   { sel = Math.max(0, sel - 1); }
+
   function onKey(e: KeyboardEvent) {
     if (!open) return;
     if (e.key === 'Escape') { e.preventDefault(); close(); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); return; }
-    if (e.key === 'ArrowUp')   { e.preventDefault(); sel = Math.max(0, sel - 1); return; }
+    if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) { e.preventDefault(); moveDown(); return; }
+    if (e.key === 'ArrowUp'   || (e.ctrlKey && e.key === 'p')) { e.preventDefault(); moveUp();   return; }
     if (e.key === 'Enter')     { e.preventDefault(); items[sel]?.run(); return; }
     if (e.key === 'Tab')       {
       e.preventDefault();
       const i = SCOPES.indexOf(scope);
       scope = SCOPES[(i + (e.shiftKey ? -1 : 1) + SCOPES.length) % SCOPES.length];
+      sel = 0;
     }
   }
 
   function onOverlayClick() { close(); }
 </script>
+
+<svelte:window onkeydown={onKey} />
 
 {#if open}
   <div class="overlay" onclick={onOverlayClick} role="presentation"></div>
@@ -119,7 +126,6 @@
         bind:value={q}
         type="text"
         placeholder="search everything…"
-        onkeydown={onKey}
         autofocus
       />
     </div>
@@ -210,7 +216,7 @@
       {/if}
     </div>
     <div class="palette-foot">
-      <span><span class="kbd">↑↓</span> navigate</span>
+      <span><span class="kbd">↑↓</span> <span class="kbd">⌃n</span><span class="kbd">⌃p</span> navigate</span>
       <span><span class="kbd">↵</span> open</span>
       <span><span class="kbd">tab</span> cycle scope</span>
       <span class="right-ml"><span class="kbd">esc</span> close</span>

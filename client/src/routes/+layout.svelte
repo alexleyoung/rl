@@ -94,7 +94,8 @@
     <a href="/" class:on={isOn('/')}>resources</a>
     <a href="/settings/keymap" class:on={isOn('/settings')}>settings</a>
     <span class="spacer"></span>
-    <a class="right" onclick={openPalette}>search · <span class="kbd">⌘K</span></a>
+    <button class="nav-add" onclick={openAdd}>+ add <span class="kbd">⌘N</span></button>
+    <button class="nav-search" onclick={openPalette}>search <span class="kbd">⌘K</span></button>
   </nav>
 
   <main>
@@ -107,4 +108,6 @@
 
 <style>
   .spacer { flex: 1; }
+  .nav-add, .nav-search { color: var(--ink-2); font-size: 12px; }
+  .nav-add:hover, .nav-search:hover { color: var(--ink); text-decoration: underline; }
 </style>

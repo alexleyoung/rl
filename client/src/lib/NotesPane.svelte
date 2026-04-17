@@ -48,7 +48,7 @@
   <div class="notes-editor">
     <Editor value={draft} onsave={save} onsaveAndClose={saveAndClose} oncancel={cancel} />
     <div class="notes-foot">
-      <span class="dim">{saving ? 'saving…' : saved ? 'saved' : 'press :w to save · :wq save & close · :q cancel'}</span>
+      <span class="dim">{saving ? 'saving…' : saved ? 'saved' : ':w save · :wq save & close · :q cancel'}</span>
       <button class="btn" onclick={cancel}>close</button>
     </div>
   </div>
@@ -68,11 +68,23 @@
 {/if}
 
 <style>
-  .notes-editor :global(#editor-wrap) { min-height: 360px; }
+  /* make the pane-body a flex column so children can stretch */
+  :global(.notes-body) { display: flex; flex-direction: column; }
+
+  .notes-editor {
+    display: flex; flex-direction: column; flex: 1; min-height: 0;
+  }
+  .notes-editor :global(#editor-wrap) {
+    flex: 1; min-height: 0; overflow: auto;
+  }
+  .rendered {
+    flex: 1; min-height: 0; overflow: auto;
+  }
+  .empty {
+    flex: 1; display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
+  }
   .notes-foot {
     display: flex; justify-content: space-between; align-items: center;
-    gap: 10px; margin-top: 10px; font-size: 11px;
+    gap: 10px; padding-top: 8px; font-size: 11px; flex-shrink: 0;
   }
-  .empty { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
-  .rendered { min-height: 200px; }
 </style>
