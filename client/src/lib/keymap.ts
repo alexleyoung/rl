@@ -24,6 +24,11 @@ export const defaultKeymap: Record<string, KeymapEntry> = {
   'go to done':         { action: 'go to done',         bindings: ['g d'],     context: 'anywhere',   group: 'navigation' },
   'next / prev tag':    { action: 'next / prev tag',    bindings: ['[', ']'],  context: 'tag view',   group: 'navigation' },
 
+  'go to tab 1':        { action: 'go to tab 1',        bindings: ['1'],       context: 'list views', group: 'in list' },
+  'go to tab 2':        { action: 'go to tab 2',        bindings: ['2'],       context: 'list views', group: 'in list' },
+  'go to tab 3':        { action: 'go to tab 3',        bindings: ['3'],       context: 'list views', group: 'in list' },
+  'go to tab 4':        { action: 'go to tab 4',        bindings: ['4'],       context: 'list views', group: 'in list' },
+  'go to tab 5':        { action: 'go to tab 5',        bindings: ['5'],       context: 'list views', group: 'in list' },
   'move selection':     { action: 'move selection',     bindings: ['j', 'k'],  context: 'list views', group: 'in list' },
   'open resource':      { action: 'open resource',      bindings: ['↵'],       context: 'list views', group: 'in list' },
   'mark read / unread': { action: 'mark read / unread', bindings: ['e'],       context: 'list views', group: 'in list' },

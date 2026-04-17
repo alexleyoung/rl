@@ -2,7 +2,7 @@
   import { api, type ResourceDto } from '$lib/api';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { pageActions } from '$lib/paletteActions';
+  import { pageActions, pageHandlers } from '$lib/paletteActions';
 
   type Status = 'inbox' | 'reading' | 'queue' | 'done' | 'all';
 
@@ -65,6 +65,8 @@
 
   function fmtTag(t: string) { return '#' + t; }
 
+  const STATUS_TABS: Status[] = ['inbox', 'reading', 'queue', 'done', 'all'];
+
   $effect(() => {
     pageActions.set([
       { label: 'go to inbox',   run: () => goto('/?status=inbox') },
@@ -73,7 +75,12 @@
       { label: 'go to done',    run: () => goto('/?status=done') },
       { label: 'go to all',     run: () => goto('/?status=all') },
     ]);
-    return () => pageActions.set([]);
+    pageHandlers.set(
+      Object.fromEntries(STATUS_TABS.map((s, i) => [
+        `go to tab ${i + 1}`, () => setStatus(s),
+      ]))
+    );
+    return () => { pageActions.set([]); pageHandlers.set({}); };
   });
 
   function isTypingTarget(el: EventTarget | null) {
