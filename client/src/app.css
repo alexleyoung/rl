@@ -342,8 +342,7 @@ h2.title { font-weight: 700; font-size: 13px; margin: 0 0 14px; }
   color: var(--ink);
 }
 .p-row:hover { background: var(--bg-2); }
-.p-row.sel { background: var(--bg-2); border-left: 2px solid var(--accent); padding-left: calc(12px - 2px); }
-.p-row:not(.sel) { border-left: 2px solid transparent; }
+.p-row.sel { background: #1e2022; }
 .p-row .ty { color: var(--ink-3); font-size: 11px; text-transform: uppercase; }
 .p-row .snip { color: var(--ink-2); font-size: 12px; }
 .p-row b { color: var(--ink); font-weight: 500; background: var(--hl); padding: 0 1px; }
