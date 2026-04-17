@@ -1,6 +1,7 @@
 :root {
   --bg:      #0e0f10;
   --bg-2:    #141517;
+  --bg-sel:  #2a2d30;
   --ink:     #d9d7d2;
   --ink-2:   #8c8a84;
   --ink-3:   #5a5854;
@@ -18,6 +19,7 @@
 html[data-theme="light"] {
   --bg:      #f5f4f0;
   --bg-2:    #eceae4;
+  --bg-sel:  #d8d5cc;
   --ink:     #1a1916;
   --ink-2:   #6b6860;
   --ink-3:   #9c9a94;
@@ -355,7 +357,7 @@ h2.title { font-weight: 700; font-size: 13px; margin: 0 0 14px; }
   color: var(--ink);
 }
 .p-row:hover { background: var(--bg-2); }
-.p-row.sel { background: #2a2d30; }
+.p-row.sel { background: var(--bg-sel); }
 .p-row .ty { color: var(--ink-3); font-size: 11px; text-transform: uppercase; }
 .p-row .snip { color: var(--ink-2); font-size: 12px; }
 .p-row b { color: var(--ink); font-weight: 500; background: var(--hl); padding: 0 1px; }
