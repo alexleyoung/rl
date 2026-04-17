@@ -5,7 +5,7 @@
   import Panes, { type PaneMode } from '$lib/Panes.svelte';
   import NotesPane from '$lib/NotesPane.svelte';
   import PdfPane from '$lib/PdfPane.svelte';
-  import { pageActions } from '$lib/paletteActions';
+  import { pageActions, pageHandlers } from '$lib/paletteActions';
   import { STATUSES } from '$lib/status';
 
   const rid = $derived(Number(page.params.id));
@@ -63,7 +63,12 @@
       { label: 'new note',        run: () => goto(`/resources/${id}/notes/new`) },
       { label: 'delete resource', run: () => deleteResource() },
     ]);
-    return () => pageActions.set([]);
+    pageHandlers.set({
+      'toggle pdf pane':   togglePdf,
+      'toggle notes pane': toggleNotes,
+      'swap panes':        () => { paneMode = paneMode === 'both' ? 'pdf-only' : paneMode === 'pdf-only' ? 'notes-only' : 'both'; },
+    });
+    return () => { pageActions.set([]); pageHandlers.set({}); };
   });
 </script>
 

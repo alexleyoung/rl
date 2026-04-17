@@ -6,6 +6,7 @@
   import AddModal from '$lib/AddModal.svelte';
   import HelpOverlay from '$lib/HelpOverlay.svelte';
   import { getBindingsForAction, defaultKeymap } from '$lib/keymap';
+  import { pageHandlers } from '$lib/paletteActions';
 
   interface Props { children: import('svelte').Snippet }
   let { children }: Props = $props();
@@ -13,6 +14,11 @@
   let paletteOpen = $state(false);
   let addOpen = $state(false);
   let helpOpen = $state(false);
+  let pageHandlersValue = $state<Record<string, () => void>>({});
+  $effect(() => {
+    const unsub = pageHandlers.subscribe(v => { pageHandlersValue = v; });
+    return unsub;
+  });
   let chordPending = $state<string | null>(null);
   let chordTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -61,7 +67,11 @@
       case 'go to queue': goto('/?status=queue'); return true;
       case 'go to done': goto('/?status=done'); return true;
       case 'this help': helpOpen = true; return true;
-      default: return false;
+      default: {
+        const handler = pageHandlersValue[action];
+        if (handler) { handler(); return true; }
+        return false;
+      }
     }
   }
 
