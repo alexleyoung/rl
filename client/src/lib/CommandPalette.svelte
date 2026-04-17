@@ -189,4 +189,5 @@
 
 <style>
   .p-row { background: none; border: none; width: 100%; text-align: left; font: inherit; }
+  :global(.p-row.sel) { background: var(--bg-sel); }
 </style>
