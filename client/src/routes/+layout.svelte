@@ -71,6 +71,7 @@
       if (paletteOpen) { paletteOpen = false; return; }
       if (addOpen) { addOpen = false; return; }
       if (helpOpen) { helpOpen = false; return; }
+      if (currentPath !== '/') { history.back(); return; }
     }
     const inInput = isTypingTarget(e.target);
 
