@@ -17,10 +17,9 @@
 
   const SCOPES: Scope[] = ['all', 'name', 'notes', 'tags', 'actions'];
 
-  // Predefined actions shown in the "actions" section
   interface Action { label: string; kbd?: string; run: () => void }
   const actions: Action[] = [
-    { label: 'add new resource…', kbd: '⌘N', run: () => { close(); /* layout listens for ⌘N */
+    { label: 'add new resource…', kbd: '⌘N', run: () => { close();
       setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', metaKey: true })), 0); } },
     { label: 'go to inbox',    run: () => { close(); goto('/?status=inbox'); } },
     { label: 'go to reading',  run: () => { close(); goto('/?status=reading'); } },
@@ -36,21 +35,16 @@
     try {
       const res = await api.search(q.trim(), 20);
       hits = res.hits;
-    } catch {
-      hits = [];
-    }
+    } catch { hits = []; }
   }
 
   async function runTags() {
-    try {
-      tags = await api.listTags();
-    } catch { tags = []; }
+    try { tags = await api.listTags(); } catch { tags = []; }
   }
 
   $effect(() => {
     if (!open) return;
     runTags();
-    // reset on open
     sel = 0;
     setTimeout(() => input?.select(), 20);
   });
@@ -62,39 +56,60 @@
     debounceTimer = setTimeout(runSearch, 120);
   });
 
-  // Filtered sections
   let resourceHits = $derived(hits.filter(h => h.source_kind === 'resource'));
   let noteHits     = $derived(hits.filter(h => h.source_kind === 'note'));
-  let tagHits      = $derived(
-    q.trim()
-      ? tags.filter(t => t.name.toLowerCase().includes(q.trim().toLowerCase()))
-      : []
-  );
-  let actionHits   = $derived(
-    q.trim()
-      ? actions.filter(a => a.label.toLowerCase().includes(q.trim().toLowerCase()))
-      : actions
-  );
+  let tagHits      = $derived(q.trim() ? tags.filter(t => t.name.toLowerCase().includes(q.trim().toLowerCase())) : []);
+  let actionHits   = $derived(q.trim() ? actions.filter(a => a.label.toLowerCase().includes(q.trim().toLowerCase())) : actions);
 
-  interface FlatItem { kind: 'resource' | 'note' | 'tag' | 'action'; run: () => void; el: any }
-  let items = $derived.by<FlatItem[]>(() => {
-    const arr: FlatItem[] = [];
-    if (scope === 'all' || scope === 'name') {
-      for (const h of resourceHits) arr.push({ kind: 'resource', run: () => { close(); goto(`/resources/${h.resource_id}`); }, el: h });
+  type Section =
+    | { kind: 'resource'; head: string; rows: { idx: number; h: SearchHitDto }[] }
+    | { kind: 'note';     head: string; rows: { idx: number; h: SearchHitDto }[] }
+    | { kind: 'tag';      head: string; rows: { idx: number; t: TagDto }[] }
+    | { kind: 'action';   head: string; rows: { idx: number; a: Action }[] };
+
+  // Build sections with stable flat indices
+  let sections = $derived.by(() => {
+    const sects: Section[] = [];
+    let idx = 0;
+
+    if ((scope === 'all' || scope === 'name') && resourceHits.length > 0) {
+      sects.push({ kind: 'resource', head: `resources · ${resourceHits.length}`,
+        rows: resourceHits.map(h => ({ idx: idx++, h })) });
     }
-    if (scope === 'all' || scope === 'notes') {
-      for (const h of noteHits) arr.push({ kind: 'note', run: () => { close(); goto(`/resources/${h.resource_id}/notes/${h.note_id}`); }, el: h });
+    if ((scope === 'all' || scope === 'notes') && noteHits.length > 0) {
+      sects.push({ kind: 'note', head: `in notes · ${noteHits.length}`,
+        rows: noteHits.map(h => ({ idx: idx++, h })) });
     }
-    if (scope === 'all' || scope === 'tags') {
-      for (const t of tagHits) arr.push({ kind: 'tag', run: () => { close(); goto(`/t/${encodeURIComponent(t.name)}`); }, el: t });
+    if ((scope === 'all' || scope === 'tags') && tagHits.length > 0) {
+      sects.push({ kind: 'tag', head: `tags · ${tagHits.length}`,
+        rows: tagHits.map(t => ({ idx: idx++, t })) });
     }
-    if (scope === 'all' || scope === 'actions') {
-      for (const a of actionHits) arr.push({ kind: 'action', run: a.run, el: a });
+    if ((scope === 'all' || scope === 'actions') && actionHits.length > 0) {
+      sects.push({ kind: 'action', head: 'actions',
+        rows: actionHits.map(a => ({ idx: idx++, a })) });
     }
-    return arr;
+    return sects;
   });
 
-  function moveDown() { sel = items.length > 0 ? Math.min(items.length - 1, sel + 1) : 0; }
+  let totalItems = $derived(sections.reduce((n, s) => n + s.rows.length, 0));
+
+  // Flat run-function lookup by index
+  function run(i: number) {
+    let offset = 0;
+    for (const s of sections) {
+      if (i < offset + s.rows.length) {
+        const row = s.rows[i - offset];
+        if (s.kind === 'resource') { close(); goto(`/resources/${(row as any).h.resource_id}`); }
+        else if (s.kind === 'note')   { close(); goto(`/resources/${(row as any).h.resource_id}`); }
+        else if (s.kind === 'tag')    { close(); goto(`/t/${encodeURIComponent((row as any).t.name)}`); }
+        else if (s.kind === 'action') { (row as any).a.run(); }
+        return;
+      }
+      offset += s.rows.length;
+    }
+  }
+
+  function moveDown() { sel = totalItems > 0 ? Math.min(totalItems - 1, sel + 1) : 0; }
   function moveUp()   { sel = Math.max(0, sel - 1); }
 
   function onKey(e: KeyboardEvent) {
@@ -102,7 +117,7 @@
     if (e.key === 'Escape') { e.preventDefault(); close(); return; }
     if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) { e.preventDefault(); moveDown(); return; }
     if (e.key === 'ArrowUp'   || (e.ctrlKey && e.key === 'p')) { e.preventDefault(); moveUp();   return; }
-    if (e.key === 'Enter')     { e.preventDefault(); items[sel]?.run(); return; }
+    if (e.key === 'Enter')     { e.preventDefault(); run(sel); return; }
     if (e.key === 'Tab')       {
       e.preventDefault();
       const i = SCOPES.indexOf(scope);
@@ -121,13 +136,7 @@
   <div class="palette" role="dialog" aria-modal="true">
     <div class="palette-head">
       <span class="muted">&gt;</span>
-      <input
-        bind:this={input}
-        bind:value={q}
-        type="text"
-        placeholder="search everything…"
-        autofocus
-      />
+      <input bind:this={input} bind:value={q} type="text" placeholder="search everything…" autofocus />
     </div>
     <div class="palette-scopes">
       {#each SCOPES as s}
@@ -135,83 +144,37 @@
       {/each}
     </div>
     <div class="palette-body">
-      {#if scope === 'all' || scope === 'name'}
-        {#if resourceHits.length > 0}
-          <div class="p-section-head">resources · {resourceHits.length}</div>
-          {#each resourceHits as h, i}
-            {@const flatIdx = items.findIndex(x => x.kind === 'resource' && x.el === h)}
-            <button
-              class="p-row"
-              class:sel={sel === flatIdx}
-              onmouseenter={() => sel = flatIdx}
-              onclick={() => items[flatIdx]?.run()}
-            >
+      {#each sections as section}
+        <div class="p-section-head">{section.head}</div>
+        {#each section.rows as row}
+          <button
+            class="p-row"
+            class:sel={sel === row.idx}
+            onmouseenter={() => sel = row.idx}
+            onclick={() => run(row.idx)}
+          >
+            {#if section.kind === 'resource'}
               <span class="ty">resource</span>
-              <span>{h.title}</span>
-              <span class="rt">{h.snippet.slice(0, 40)}</span>
-            </button>
-          {/each}
-        {/if}
-      {/if}
-
-      {#if scope === 'all' || scope === 'notes'}
-        {#if noteHits.length > 0}
-          <div class="p-section-head">in notes · {noteHits.length}</div>
-          {#each noteHits as h}
-            {@const flatIdx = items.findIndex(x => x.kind === 'note' && x.el === h)}
-            <button
-              class="p-row"
-              class:sel={sel === flatIdx}
-              onmouseenter={() => sel = flatIdx}
-              onclick={() => items[flatIdx]?.run()}
-            >
+              <span>{(row as any).h.title}</span>
+              <span class="rt">{(row as any).h.snippet.slice(0, 40)}</span>
+            {:else if section.kind === 'note'}
               <span class="ty">note</span>
-              <span class="snip">{h.snippet}</span>
-              <span class="rt">{h.title}</span>
-            </button>
-          {/each}
-        {/if}
-      {/if}
-
-      {#if scope === 'all' || scope === 'tags'}
-        {#if tagHits.length > 0}
-          <div class="p-section-head">tags · {tagHits.length}</div>
-          {#each tagHits as t}
-            {@const flatIdx = items.findIndex(x => x.kind === 'tag' && x.el === t)}
-            <button
-              class="p-row"
-              class:sel={sel === flatIdx}
-              onmouseenter={() => sel = flatIdx}
-              onclick={() => items[flatIdx]?.run()}
-            >
+              <span class="snip">{(row as any).h.snippet}</span>
+              <span class="rt">{(row as any).h.title}</span>
+            {:else if section.kind === 'tag'}
               <span class="ty">tag</span>
-              <span>#{t.name}</span>
-              <span class="rt">{t.count} items</span>
-            </button>
-          {/each}
-        {/if}
-      {/if}
-
-      {#if scope === 'all' || scope === 'actions'}
-        {#if actionHits.length > 0}
-          <div class="p-section-head">actions</div>
-          {#each actionHits as a}
-            {@const flatIdx = items.findIndex(x => x.kind === 'action' && x.el === a)}
-            <button
-              class="p-row"
-              class:sel={sel === flatIdx}
-              onmouseenter={() => sel = flatIdx}
-              onclick={() => items[flatIdx]?.run()}
-            >
+              <span>#{(row as any).t.name}</span>
+              <span class="rt">{(row as any).t.count} items</span>
+            {:else if section.kind === 'action'}
               <span class="ty">do</span>
-              <span>{a.label}</span>
-              <span class="rt">{#if a.kbd}<span class="kbd">{a.kbd}</span>{/if}</span>
-            </button>
-          {/each}
-        {/if}
-      {/if}
+              <span>{(row as any).a.label}</span>
+              <span class="rt">{#if (row as any).a.kbd}<span class="kbd">{(row as any).a.kbd}</span>{/if}</span>
+            {/if}
+          </button>
+        {/each}
+      {/each}
 
-      {#if items.length === 0}
+      {#if totalItems === 0}
         <div class="p-section-head" style="padding:18px 12px">no results.</div>
       {/if}
     </div>
