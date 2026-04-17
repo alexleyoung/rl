@@ -57,8 +57,47 @@
 
   let unreadCount = $derived(resources.filter(r => !r.last_read_at).length);
 
+  $effect(() => {
+    const el = document.querySelector('.row-item.selected');
+    if (el) el.scrollIntoView({ block: 'nearest' });
+  });
+
   function fmtTag(t: string) { return '#' + t; }
+
+  function isTypingTarget(el: EventTarget | null) {
+    if (!(el instanceof HTMLElement)) return false;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+  }
+
+  function onKey(e: KeyboardEvent) {
+    if (isTypingTarget(e.target)) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'j' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      selected = Math.min(visible.length - 1, selected + 1);
+    } else if (e.key === 'k' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      selected = Math.max(0, selected - 1);
+    } else if (e.key === 'Enter') {
+      const r = visible[selected];
+      if (r) { e.preventDefault(); goto(`/resources/${r.id}`); }
+    } else if (e.key === 'e') {
+      const r = visible[selected];
+      if (r) { e.preventDefault(); toggleDone(r, e); }
+    } else if (e.key === 'q') {
+      const r = visible[selected];
+      if (r && r.status !== 'queue') {
+        e.preventDefault();
+        api.setStatus(Number(r.id), 'queue').then(updated => {
+          resources = resources.map(x => x.id === r.id ? updated : x);
+        }).catch((ex: any) => { error = ex.message; });
+      }
+    }
+  }
 </script>
+
+<svelte:window onkeydown={onKey} />
 
 <h2 class="title">resources</h2>
 
