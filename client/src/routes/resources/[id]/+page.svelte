@@ -118,6 +118,6 @@
   .link-btn {
     background: none; border: none; padding: 0; font: inherit; cursor: pointer;
   }
-  .link-btn.danger { color: #c08080; }
+  .link-btn.danger { color: var(--danger); }
   .link-btn:hover { text-decoration: underline; }
 </style>

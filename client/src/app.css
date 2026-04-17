@@ -2,6 +2,7 @@
   --bg:      #0e0f10;
   --bg-2:    #141517;
   --bg-sel:  #2a2d30;
+  --bg-pdf:  #111213;
   --ink:     #d9d7d2;
   --ink-2:   #8c8a84;
   --ink-3:   #5a5854;
@@ -10,16 +11,20 @@
   --accent:  #6ea8d6;
   --hl:      #3b3728;
   --hl-b:    #8a7a4e;
+  --danger:       #c08080;
+  --danger-line:  #a05050;
+  --ok:           #80c080;
+  --ok-line:      #608060;
   /* legacy aliases (for older components) */
   --fg:      var(--ink);
   --dim:     var(--ink-2);
   --border:  var(--line-2);
-  --danger:  #c08080;
 }
 html[data-theme="light"] {
   --bg:      #f5f4f0;
   --bg-2:    #eceae4;
   --bg-sel:  #d8d5cc;
+  --bg-pdf:  #fbfaf7;
   --ink:     #1a1916;
   --ink-2:   #6b6860;
   --ink-3:   #9c9a94;
@@ -28,7 +33,10 @@ html[data-theme="light"] {
   --accent:  #2a6fa8;
   --hl:      #f0e8c0;
   --hl-b:    #c4a84e;
-  --danger:  #a04040;
+  --danger:       #a04040;
+  --danger-line:  #c06060;
+  --ok:           #3a7a3a;
+  --ok-line:      #5ca05c;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
@@ -98,7 +106,7 @@ textarea { resize: vertical; }
 }
 .btn:hover { border-color: var(--ink-2); text-decoration: none; }
 .btn.primary { border-color: var(--ink); }
-.btn.danger { border-color: #a05050; color: #c08080; }
+.btn.danger { border-color: var(--danger-line); color: var(--danger); }
 .kbd {
   display: inline-block;
   font-size: 11px;
@@ -242,7 +250,7 @@ h2.title { font-weight: 700; font-size: 13px; margin: 0 0 14px; }
 .pane-body { padding: 14px 16px; overflow: auto; flex: 1; }
 
 .pdf-body {
-  background: #111213;
+  background: var(--bg-pdf);
   font-size: 12.5px;
   line-height: 1.7;
   color: var(--ink-2);
@@ -505,8 +513,8 @@ table.keymap td .binding.editing { border-color: var(--accent); color: var(--acc
 
 /* flash / status messages */
 .flash { padding: 6px 10px; border: 1px solid var(--line-2); margin-bottom: 12px; font-size: 12px; border-radius: 2px; }
-.flash.err { border-color: #a05050; color: #c08080; }
-.flash.ok  { border-color: #608060; color: #80c080; }
+.flash.err { border-color: var(--danger-line); color: var(--danger); }
+.flash.ok  { border-color: var(--ok-line); color: var(--ok); }
 
 /* editor container (CodeMirror) */
 .cm-editor { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace !important; font-size: 13px !important; background: var(--bg) !important; color: var(--ink) !important; }
