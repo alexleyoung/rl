@@ -525,6 +525,9 @@ table.keymap td .binding.editing { border-color: var(--accent); color: var(--acc
 .cm-editor .cm-activeLineGutter { background: var(--bg-2) !important; }
 .cm-editor .cm-cursor { border-left-color: var(--ink) !important; }
 .cm-editor .cm-selectionBackground { background: var(--line-2) !important; }
+.cm-vim-panel { background: var(--bg-2) !important; color: var(--ink) !important; border-top: 1px solid var(--line) !important; font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace !important; font-size: 13px !important; }
+.cm-vim-panel input { background: transparent !important; color: var(--ink) !important; font-family: inherit !important; font-size: inherit !important; outline: none !important; border: none !important; }
+.cm-vim-message { background: var(--bg-2) !important; color: var(--ink-2) !important; font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace !important; font-size: 13px !important; }
 
 /* meta / kind / etc for resource edit */
 .meta { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; font-size: 12px; }
