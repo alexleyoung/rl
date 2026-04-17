@@ -30,12 +30,16 @@
 
   function close() { open = false; }
 
+  const SEARCH_LIMIT = 30;
+  let hitsCapped = $state(false);
+
   async function runSearch() {
-    if (!q.trim()) { hits = []; return; }
+    if (!q.trim()) { hits = []; hitsCapped = false; return; }
     try {
-      const res = await api.search(q.trim(), 20);
+      const res = await api.search(q.trim(), SEARCH_LIMIT);
       hits = res.hits;
-    } catch { hits = []; }
+      hitsCapped = res.hits.length >= SEARCH_LIMIT;
+    } catch { hits = []; hitsCapped = false; }
   }
 
   async function runTags() {
@@ -182,6 +186,7 @@
       <span><span class="kbd">↑↓</span> <span class="kbd">⌃n</span><span class="kbd">⌃p</span> navigate</span>
       <span><span class="kbd">↵</span> open</span>
       <span><span class="kbd">tab</span> cycle scope</span>
+      {#if hitsCapped}<span class="dim">showing first {SEARCH_LIMIT} results</span>{/if}
       <span class="right-ml"><span class="kbd">esc</span> close</span>
     </div>
   </div>
