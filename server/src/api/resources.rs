@@ -9,8 +9,8 @@ use serde::Deserialize;
 use crate::{
     api::dto::{NoteDto, QuickSetDto, ResourceDetailDto, ResourceDto, ResourceInputDto, SetTagsDto},
     error::AppError,
-    indexing::{pdf as pdf_indexer, url as url_indexer},
-    models::{note, resource},
+    indexing::{pdf as pdf_indexer, reader as reader_indexer, url as url_indexer},
+    models::{note, reading, resource},
     state::AppState,
 };
 
@@ -95,6 +95,7 @@ pub async fn update(
     };
     resource::update(&s.pool, id, &ri).await?;
     resource::set_tags(&s.pool, id, &input.tags).await?;
+    reading::delete_for_resource(&s.pool, id).await.ok();
     spawn_indexing(&s, id, ri.file_path.as_deref(), &ri.kind, ri.url.as_deref());
 
     let r = resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
@@ -124,19 +125,27 @@ pub async fn quick_set(
         "url" => {
             sqlx::query!("UPDATE resources SET url=? WHERE id=?", val, id)
                 .execute(&s.pool).await?;
+            reading::delete_for_resource(&s.pool, id).await.ok();
             if matches!(r.kind.as_str(), "article" | "blog") {
                 if let Some(u) = val.clone() {
                     let s2 = s.clone();
+                    let u2 = u.clone();
                     tokio::spawn(async move { url_indexer::index_url(&s2.pool, s2.embedder, id, &u).await; });
+                    let pool = s.pool.clone();
+                    tokio::spawn(async move { reader_indexer::extract_url(&pool, id, &u2).await; });
                 }
             }
         }
         "file_path" => {
             sqlx::query!("UPDATE resources SET file_path=? WHERE id=?", val, id)
                 .execute(&s.pool).await?;
+            reading::delete_for_resource(&s.pool, id).await.ok();
             if let Some(fp) = val.clone() {
                 let s2 = s.clone();
+                let fp2 = fp.clone();
                 tokio::spawn(async move { pdf_indexer::index_pdf(&s2.pool, s2.embedder, id, &fp).await; });
+                let pool = s.pool.clone();
+                tokio::spawn(async move { reader_indexer::extract_pdf(&pool, id, &fp2).await; });
             }
         }
         other => return Err(AppError::Validation(format!("unknown field: {other}"))),
@@ -179,13 +188,19 @@ fn spawn_indexing(s: &AppState, id: i64, file_path: Option<&str>, kind: &str, ur
     if let Some(fp) = file_path {
         let fp = fp.to_string();
         let s2 = s.clone();
+        let fp2 = fp.clone();
         tokio::spawn(async move { pdf_indexer::index_pdf(&s2.pool, s2.embedder, id, &fp).await; });
+        let pool = s.pool.clone();
+        tokio::spawn(async move { reader_indexer::extract_pdf(&pool, id, &fp2).await; });
     }
     if matches!(kind, "article" | "blog") {
         if let Some(u) = url {
             let u = u.to_string();
             let s2 = s.clone();
+            let u2 = u.clone();
             tokio::spawn(async move { url_indexer::index_url(&s2.pool, s2.embedder, id, &u).await; });
+            let pool = s.pool.clone();
+            tokio::spawn(async move { reader_indexer::extract_url(&pool, id, &u2).await; });
         }
     }
 }

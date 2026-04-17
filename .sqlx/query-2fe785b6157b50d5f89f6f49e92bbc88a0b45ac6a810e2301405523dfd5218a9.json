@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT resource_id FROM notes WHERE id=?",
+  "describe": {
+    "columns": [
+      {
+        "name": "resource_id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2fe785b6157b50d5f89f6f49e92bbc88a0b45ac6a810e2301405523dfd5218a9"
+}

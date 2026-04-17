@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO reading_content\n            (resource_id, content_html, content_text, source_type,\n             word_count, status, extracted_at)\n         VALUES (?, ?, ?, ?, ?, 'ok', unixepoch())\n         ON CONFLICT(resource_id) DO UPDATE SET\n            content_html=excluded.content_html,\n            content_text=excluded.content_text,\n            source_type=excluded.source_type,\n            word_count=excluded.word_count,\n            status='ok',\n            extracted_at=unixepoch()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "9b115e9b66b77bed06c82934fb8513b25d3e17ded8076b89a9490b6703cfd8bd"
+}

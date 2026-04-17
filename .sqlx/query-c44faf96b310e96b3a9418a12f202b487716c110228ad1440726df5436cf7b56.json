@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT t.name AS name, COUNT(rt.resource_id) AS count\n         FROM tags t\n         LEFT JOIN resource_tags rt ON rt.tag_id = t.id\n         GROUP BY t.id\n         ORDER BY t.name",
+  "describe": {
+    "columns": [
+      {
+        "name": "name",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "count",
+        "ordinal": 1,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "c44faf96b310e96b3a9418a12f202b487716c110228ad1440726df5436cf7b56"
+}

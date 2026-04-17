@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT r.id, r.kind, r.title, r.author, r.url, r.file_path, r.added_at\n         FROM resources r\n         JOIN resource_tags rt ON rt.resource_id = r.id\n         JOIN tags t ON t.id = rt.tag_id\n         WHERE t.name = ? COLLATE NOCASE\n         ORDER BY r.added_at DESC",
+  "query": "SELECT id, kind, title, author, url, file_path, added_at, last_read_at\n         FROM resources ORDER BY added_at DESC",
   "describe": {
     "columns": [
       {
@@ -37,10 +37,15 @@
         "name": "added_at",
         "ordinal": 6,
         "type_info": "Int64"
+      },
+      {
+        "name": "last_read_at",
+        "ordinal": 7,
+        "type_info": "Int64"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       false,
@@ -49,8 +54,9 @@
       true,
       true,
       true,
-      false
+      false,
+      true
     ]
   },
-  "hash": "1ece7cd562bde9b1c1ad71c40f4d67e4f03df9b159d3596706c226e8de1603a0"
+  "hash": "72911c58f27a03b02f8ef7082f3b6e63a076c0e456c5296d1875953dcf997140"
 }
