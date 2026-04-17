@@ -2,6 +2,7 @@
   import { api, type ResourceDto } from '$lib/api';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
+  import { pageActions } from '$lib/paletteActions';
 
   type Status = 'inbox' | 'reading' | 'queue' | 'done' | 'all';
 
@@ -63,6 +64,17 @@
   });
 
   function fmtTag(t: string) { return '#' + t; }
+
+  $effect(() => {
+    pageActions.set([
+      { label: 'go to inbox',   run: () => goto('/?status=inbox') },
+      { label: 'go to reading', run: () => goto('/?status=reading') },
+      { label: 'go to queue',   run: () => goto('/?status=queue') },
+      { label: 'go to done',    run: () => goto('/?status=done') },
+      { label: 'go to all',     run: () => goto('/?status=all') },
+    ]);
+    return () => pageActions.set([]);
+  });
 
   function isTypingTarget(el: EventTarget | null) {
     if (!(el instanceof HTMLElement)) return false;

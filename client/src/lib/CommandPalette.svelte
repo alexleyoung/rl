@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { api, type SearchHitDto, type TagDto } from '$lib/api';
+  import { pageActions, type Action } from '$lib/paletteActions';
 
   type Scope = 'all' | 'name' | 'notes' | 'tags' | 'actions';
 
@@ -17,16 +18,21 @@
 
   const SCOPES: Scope[] = ['all', 'name', 'notes', 'tags', 'actions'];
 
-  interface Action { label: string; kbd?: string; run: () => void }
-  const actions: Action[] = [
+  const globalActions: Action[] = [
     { label: 'add new resource…', kbd: '⌘N', run: () => { close();
       setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', metaKey: true })), 0); } },
-    { label: 'go to inbox',    run: () => { close(); goto('/?status=inbox'); } },
-    { label: 'go to reading',  run: () => { close(); goto('/?status=reading'); } },
-    { label: 'go to queue',    run: () => { close(); goto('/?status=queue'); } },
-    { label: 'go to done',     run: () => { close(); goto('/?status=done'); } },
     { label: 'settings',       run: () => { close(); goto('/settings/keymap'); } },
   ];
+
+  let pageActionsValue = $state<Action[]>([]);
+  $effect(() => {
+    const unsub = pageActions.subscribe(v => { pageActionsValue = v; });
+    return unsub;
+  });
+  const actions = $derived<Action[]>([
+    ...pageActionsValue.map(a => ({ ...a, run: () => { close(); a.run(); } })),
+    ...globalActions,
+  ]);
 
   function close() { open = false; }
 
@@ -76,6 +82,10 @@
     const sects: Section[] = [];
     let idx = 0;
 
+    if ((scope === 'all' || scope === 'actions') && actionHits.length > 0) {
+      sects.push({ kind: 'action', head: 'actions',
+        rows: actionHits.map(a => ({ idx: idx++, a })) });
+    }
     if ((scope === 'all' || scope === 'name') && resourceHits.length > 0) {
       sects.push({ kind: 'resource', head: `resources · ${resourceHits.length}`,
         rows: resourceHits.map(h => ({ idx: idx++, h })) });
@@ -87,10 +97,6 @@
     if ((scope === 'all' || scope === 'tags') && tagHits.length > 0) {
       sects.push({ kind: 'tag', head: `tags · ${tagHits.length}`,
         rows: tagHits.map(t => ({ idx: idx++, t })) });
-    }
-    if ((scope === 'all' || scope === 'actions') && actionHits.length > 0) {
-      sects.push({ kind: 'action', head: 'actions',
-        rows: actionHits.map(a => ({ idx: idx++, a })) });
     }
     return sects;
   });
@@ -118,12 +124,13 @@
 
   function onKey(e: KeyboardEvent) {
     if (!open) return;
-    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
-    if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) { e.preventDefault(); moveDown(); return; }
-    if (e.key === 'ArrowUp'   || (e.ctrlKey && e.key === 'p')) { e.preventDefault(); moveUp();   return; }
-    if (e.key === 'Enter')     { e.preventDefault(); run(sel); return; }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); close(); return; }
+    if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) { e.preventDefault(); e.stopImmediatePropagation(); moveDown(); return; }
+    if (e.key === 'ArrowUp'   || (e.ctrlKey && e.key === 'p')) { e.preventDefault(); e.stopImmediatePropagation(); moveUp();   return; }
+    if (e.key === 'Enter')     { e.preventDefault(); e.stopImmediatePropagation(); run(sel); return; }
     if (e.key === 'Tab')       {
       e.preventDefault();
+      e.stopImmediatePropagation();
       const i = SCOPES.indexOf(scope);
       scope = SCOPES[(i + (e.shiftKey ? -1 : 1) + SCOPES.length) % SCOPES.length];
       sel = 0;

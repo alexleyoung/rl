@@ -1,10 +1,34 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { goto } from '$app/navigation';
+  import { pageActions } from '$lib/paletteActions';
   interface Props { children?: import('svelte').Snippet }
   let { children }: Props = $props();
 
   const path = $derived(page.url.pathname);
   function active(p: string) { return path === p || path.startsWith(p + '/'); }
+
+  const SETTINGS_SUBPAGES: { slug: string; label: string }[] = [
+    { slug: 'general',      label: 'general' },
+    { slug: 'appearance',   label: 'appearance' },
+    { slug: 'reading',      label: 'reading' },
+    { slug: 'import',       label: 'import / export' },
+    { slug: 'keymap',       label: 'keymap' },
+    { slug: 'smart',        label: 'smart views' },
+    { slug: 'integrations', label: 'integrations' },
+    { slug: 'sync',         label: 'sync' },
+    { slug: 'data',         label: 'data' },
+  ];
+
+  $effect(() => {
+    pageActions.set(
+      SETTINGS_SUBPAGES.map(p => ({
+        label: `go to settings: ${p.label}`,
+        run: () => goto(`/settings/${p.slug}`),
+      })),
+    );
+    return () => pageActions.set([]);
+  });
 </script>
 
 <div class="settings-head">

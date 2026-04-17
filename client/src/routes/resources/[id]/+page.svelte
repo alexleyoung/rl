@@ -5,6 +5,8 @@
   import Panes, { type PaneMode } from '$lib/Panes.svelte';
   import NotesPane from '$lib/NotesPane.svelte';
   import PdfPane from '$lib/PdfPane.svelte';
+  import { pageActions } from '$lib/paletteActions';
+  import { STATUSES } from '$lib/status';
 
   const rid = $derived(Number(page.params.id));
   let resource = $state<ResourceDto | null>(null);
@@ -49,6 +51,20 @@
 
   function onNoteCreated(n: NoteDto) { notes = [...notes, n]; }
   function onNoteUpdated(n: NoteDto) { notes = notes.map(x => x.id === n.id ? n : x); }
+
+  $effect(() => {
+    const id = rid;
+    pageActions.set([
+      ...STATUSES.map(s => ({ label: `mark as ${s}`, run: () => setStatus(s) })),
+      { label: 'close pdf',       run: () => { paneMode = 'notes-only'; } },
+      { label: 'close notes',     run: () => { paneMode = 'pdf-only'; } },
+      { label: 'show both panes', run: () => { paneMode = 'both'; } },
+      { label: 'edit resource',   run: () => goto(`/resources/${id}/edit`) },
+      { label: 'new note',        run: () => goto(`/resources/${id}/notes/new`) },
+      { label: 'delete resource', run: () => deleteResource() },
+    ]);
+    return () => pageActions.set([]);
+  });
 </script>
 
 {#if error}<p class="flash err">{error}</p>{/if}
