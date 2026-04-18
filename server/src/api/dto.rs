@@ -170,9 +170,13 @@ pub struct MetadataDto {
 
 #[derive(Debug, Serialize, TS)]
 #[ts(export, export_to = "client/src/lib/types/")]
-pub struct ReadingContentDto {
-    pub content_html: String,
+pub struct ReadingContentChunkDto {
+    pub status: String,
     pub source_type: String,
     pub word_count: i64,
-    pub status: String,
+    pub total_blocks: i64,
+    pub offset: i64,
+    pub next_offset: i64,
+    pub has_more: bool,
+    pub html: String,
 }

@@ -1,23 +1,97 @@
 <script lang="ts">
-  import { api, type ResourceDto, type ReadingContentDto } from '$lib/api';
+  import { api, type ResourceDto, type ReadingContentChunkDto } from '$lib/api';
 
   interface Props { resource: ResourceDto }
   let { resource }: Props = $props();
 
-  let content = $state<ReadingContentDto | null>(null);
-  let loading = $state(true);
-  let error = $state('');
+  type Meta = {
+    status: string;
+    source_type: string;
+    word_count: number;
+    total_blocks: number;
+  };
 
-  async function load() {
-    loading = true; error = '';
+  let meta = $state<Meta | null>(null);
+  let htmlParts = $state<string[]>([]);
+  let nextOffset = $state(0);
+  let hasMore = $state(false);
+  let loading = $state(true);
+  let fetching = $state(false);
+  let error = $state('');
+  let currentId: number | null = null;
+  let extractedEl: HTMLDivElement | null = $state(null);
+  let scroller: HTMLElement | null = null;
+
+  async function loadFirst() {
+    const id = Number(resource.id);
+    currentId = id;
+    loading = true;
+    error = '';
+    meta = null;
+    htmlParts = [];
+    nextOffset = 0;
+    hasMore = false;
     try {
-      content = await api.getContent(Number(resource.id));
+      const c = await api.getContentChunk(id, 0);
+      if (currentId !== id) return;
+      if (c) {
+        meta = {
+          status: c.status,
+          source_type: c.source_type,
+          word_count: c.word_count,
+          total_blocks: c.total_blocks,
+        };
+        htmlParts = c.html ? [c.html] : [];
+        nextOffset = c.next_offset;
+        hasMore = c.has_more;
+      }
     } catch (e: any) {
       error = e.message;
-    } finally { loading = false; }
+    } finally {
+      if (currentId === id) loading = false;
+      queueMicrotask(fillViewport);
+    }
   }
 
-  $effect(() => { if (resource.id) load(); });
+  async function loadMore() {
+    if (fetching || !hasMore) return;
+    const id = currentId;
+    if (id == null) return;
+    fetching = true;
+    try {
+      const c = await api.getContentChunk(id, nextOffset);
+      if (currentId !== id || !c) return;
+      if (c.html) htmlParts = [...htmlParts, c.html];
+      nextOffset = c.next_offset;
+      hasMore = c.has_more;
+    } catch (e: any) {
+      error = e.message;
+    } finally {
+      if (currentId === id) fetching = false;
+      queueMicrotask(fillViewport);
+    }
+  }
+
+  function onScroll() {
+    if (!scroller || !hasMore || fetching) return;
+    const dist = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight;
+    if (dist < 500) loadMore();
+  }
+
+  function fillViewport() {
+    if (!scroller || !hasMore || fetching) return;
+    if (scroller.scrollHeight <= scroller.clientHeight + 500) loadMore();
+  }
+
+  $effect(() => { if (resource.id) loadFirst(); });
+
+  $effect(() => {
+    if (!extractedEl) return;
+    const s = extractedEl.closest('.pane-body') as HTMLElement | null;
+    scroller = s;
+    s?.addEventListener('scroll', onScroll, { passive: true });
+    return () => s?.removeEventListener('scroll', onScroll);
+  });
 
   let isPdf = $derived(Boolean(resource.file_path && resource.file_path.toLowerCase().endsWith('.pdf')));
 </script>
@@ -26,9 +100,10 @@
   <p class="dim">loading…</p>
 {:else if error}
   <p class="flash err">{error}</p>
-{:else if content?.status === 'ok' && content.content_html}
-  <div class="extracted">
-    {@html content.content_html}
+{:else if meta?.status === 'ok' && htmlParts.length > 0}
+  <div class="extracted" bind:this={extractedEl}>
+    {#each htmlParts as part}{@html part}{/each}
+    {#if fetching}<p class="dim">loading more…</p>{/if}
   </div>
 {:else if isPdf && resource.file_path}
   <iframe

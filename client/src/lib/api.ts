@@ -13,13 +13,13 @@ import type { UploadResponseDto } from './types/UploadResponseDto';
 import type { SetTagsDto } from './types/SetTagsDto';
 import type { ExtractInputDto } from './types/ExtractInputDto';
 import type { MetadataDto } from './types/MetadataDto';
-import type { ReadingContentDto } from './types/ReadingContentDto';
+import type { ReadingContentChunkDto } from './types/ReadingContentChunkDto';
 
 export type {
   ResourceDto, ResourceInputDto, ResourceDetailDto,
   NoteDto, NoteInputDto, NoteLocationDto,
   QuickSetDto, SetTagsDto, TagDto, SearchResponseDto, SearchHitDto, ApiErrorDto,
-  UploadResponseDto, ExtractInputDto, MetadataDto, ReadingContentDto,
+  UploadResponseDto, ExtractInputDto, MetadataDto, ReadingContentChunkDto,
 };
 
 const BASE = '/api/v1';
@@ -88,8 +88,10 @@ export const api = {
 
   fileUrl: (id: number) => `${BASE}/resources/${id}/file`,
 
-  getContent: (id: number) =>
-    req<ReadingContentDto | null>(`/resources/${id}/content`),
+  getContentChunk: (id: number, offset = 0, limit = 200) =>
+    req<ReadingContentChunkDto | null>(
+      `/resources/${id}/content?offset=${offset}&limit=${limit}`,
+    ),
 
   // Notes
   listNotes: (rid: number) =>
