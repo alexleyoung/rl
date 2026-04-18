@@ -7,7 +7,7 @@ use axum::{
 use serde::Deserialize;
 
 use crate::{
-    api::dto::{NoteDto, QuickSetDto, ReadingContentDto, ResourceDetailDto, ResourceDto, ResourceInputDto, SetTagsDto},
+    api::dto::{NoteDto, QuickSetDto, ReadingContentChunkDto, ResourceDetailDto, ResourceDto, ResourceInputDto, SetTagsDto},
     error::AppError,
     indexing::{pdf as pdf_indexer, reader as reader_indexer, url as url_indexer},
     models::{note, reading, resource},
@@ -175,17 +175,51 @@ pub async fn mark_read(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[derive(Deserialize)]
+pub struct ContentRange {
+    pub offset: Option<i64>,
+    pub limit: Option<i64>,
+}
+
 pub async fn get_content(
     State(s): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<Json<Option<ReadingContentDto>>, AppError> {
+    Query(r): Query<ContentRange>,
+) -> Result<Json<Option<ReadingContentChunkDto>>, AppError> {
     resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
-    let rc = reading::get(&s.pool, id).await?;
-    Ok(Json(rc.map(|c| ReadingContentDto {
-        content_html: c.content_html,
+    let Some(c) = reading::get(&s.pool, id).await? else {
+        return Ok(Json(None));
+    };
+
+    let blocks = reader_indexer::split_top_level_blocks(&c.content_html);
+    let total = blocks.len() as i64;
+    let offset = r.offset.unwrap_or(0).max(0).min(total);
+    let max_blocks = r.limit.unwrap_or(200).clamp(1, 2000);
+    const TARGET_BYTES: usize = 50_000;
+
+    let mut taken = 0i64;
+    let mut bytes = 0usize;
+    while offset + taken < total && taken < max_blocks {
+        let b = blocks[(offset + taken) as usize];
+        if taken > 0 && bytes + b.len() > TARGET_BYTES {
+            break;
+        }
+        bytes += b.len();
+        taken += 1;
+    }
+    let start = offset as usize;
+    let end = (offset + taken) as usize;
+    let html = blocks[start..end].join("\n");
+
+    Ok(Json(Some(ReadingContentChunkDto {
+        status: c.status,
         source_type: c.source_type,
         word_count: c.word_count,
-        status: c.status,
+        total_blocks: total,
+        offset,
+        next_offset: offset + taken,
+        has_more: offset + taken < total,
+        html,
     })))
 }
 
