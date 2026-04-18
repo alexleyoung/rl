@@ -79,7 +79,8 @@ async fn main() {
         .with_state(state);
 
     let bind = std::env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
-    let listener = tokio::net::TcpListener::bind(&bind).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&bind).await
+        .unwrap_or_else(|e| { tracing::error!("failed to bind {bind}: {e}"); std::process::exit(1); });
     tracing::info!("listening on {bind}");
     axum::serve(listener, app).await.unwrap();
 }

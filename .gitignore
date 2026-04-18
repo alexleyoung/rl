@@ -18,7 +18,6 @@ server/bindings/
 server/client/
 client/src/lib/types/client/
 
-
 # Added by cargo
 #
 # already existing elements were commented out
