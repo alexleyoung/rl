@@ -20,7 +20,6 @@ pub async fn index_pdf(pool: &SqlitePool, embedder: Option<Arc<Embedder>>, resou
         let page_text: String = page.blocks.iter().filter_map(|b| match b {
             pymupdf::PdfBlock::Heading { text, .. } => Some(text.as_str()),
             pymupdf::PdfBlock::Paragraph { text } => Some(text.as_str()),
-            pymupdf::PdfBlock::Image { .. } => None,
         }).collect::<Vec<_>>().join("\n");
         if i == 0 { page_text } else { format!("\n\n{page_text}") }
     }).collect();

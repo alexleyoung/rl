@@ -6,7 +6,7 @@
   interface Props {
     mode?: PaneMode;
     pdf?: Snippet;
-    notes?: Snippet;
+    notesPane?: Snippet;
     pdfLabel?: string;
     notesLabel?: string;
     onClosePdf?: () => void;
@@ -16,7 +16,7 @@
   let {
     mode = $bindable('both'),
     pdf,
-    notes,
+    notesPane,
     pdfLabel = 'pdf',
     notesLabel = 'notes · markdown',
     onClosePdf,
@@ -44,7 +44,7 @@
         <button class="close" title="close pane" onclick={() => { mode = 'pdf-only'; onCloseNotes?.(); }}>×</button>
       </div>
       <div class="pane-body notes-body">
-        {#if notes}{@render notes()}{/if}
+        {#if notesPane}{@render notesPane()}{/if}
       </div>
     </div>
   {/if}

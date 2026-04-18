@@ -157,11 +157,6 @@ fn pdf_blocks_to_html(content: &pymupdf::PdfContent) -> (String, String) {
                     text.push_str(t);
                     text.push('\n');
                 }
-                pymupdf::PdfBlock::Image { data, ext, .. } => {
-                    html.push_str(&format!(
-                        "<img src=\"data:image/{ext};base64,{data}\" loading=\"lazy\">\n"
-                    ));
-                }
             }
         }
     }

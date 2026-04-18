@@ -9,7 +9,6 @@ Usage:
 
 import sys
 import json
-import base64
 import argparse
 import statistics
 
@@ -117,39 +116,8 @@ def extract_content(path: str) -> dict:
                 else:
                     blocks_out.append({"type": "paragraph", "text": text})
 
-            elif btype == 1:  # image
-                try:
-                    xref = block.get("image")
-                    if xref is None:
-                        # Older PyMuPDF: image info is in block directly.
-                        xref = block.get("xref")
-                    if xref is None:
-                        continue
-                    img_info = doc.extract_image(xref)
-                    if not img_info:
-                        continue
-                    w = img_info.get("width", 0)
-                    h = img_info.get("height", 0)
-                    if w < 32 or h < 32:
-                        continue  # skip tiny decorative glyphs
-                    raw = img_info["image"]
-                    ext = img_info.get("ext", "png")
-                    # Always re-encode as PNG for consistency.
-                    pix = fitz.Pixmap(raw)
-                    if pix.alpha:
-                        pix = fitz.Pixmap(fitz.csRGB, pix)
-                    png_bytes = pix.tobytes("png")
-                    data_b64 = base64.b64encode(png_bytes).decode("ascii")
-                    blocks_out.append({
-                        "type": "image",
-                        "data": data_b64,
-                        "ext": "png",
-                        "width": w,
-                        "height": h,
-                    })
-                except Exception as e:
-                    print(f"warn: image extraction failed: {e}", file=sys.stderr)
-                    continue
+            elif btype == 1:  # image — skip to avoid storing large base64 blobs
+                continue
 
         pages_out.append({"blocks": blocks_out})
 

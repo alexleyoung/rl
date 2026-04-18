@@ -28,6 +28,7 @@ pub fn router() -> Router<AppState> {
         .route("/resources/:id/quick-set",    post(resources::quick_set))
         .route("/resources/:id/tags",         post(resources::set_tags))
         .route("/resources/:id/read",         post(resources::mark_read))
+        .route("/resources/:id/reextract",    post(resources::reextract))
         .route("/resources/:id/file",         get(files::serve))
         .route("/resources/:id/content",      get(resources::get_content))
         .route("/resources/:rid/notes",       get(notes::list).post(notes::create))

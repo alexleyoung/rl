@@ -47,10 +47,15 @@
     goto('/');
   }
 
-  let primaryNote = $derived(notes.length > 0 ? notes[notes.length - 1] : null);
+  let reextracting = $state(false);
+  async function reextract() {
+    reextracting = true;
+    try { await api.reextract(rid); } finally { reextracting = false; }
+  }
 
   function onNoteCreated(n: NoteDto) { notes = [...notes, n]; }
   function onNoteUpdated(n: NoteDto) { notes = notes.map(x => x.id === n.id ? n : x); }
+  function onNoteDeleted(id: number) { notes = notes.filter(x => Number(x.id) !== id); }
 
   let pdfScroll: ((delta: number) => void) | undefined = $state();
   const SCROLL_STEP = 300;
@@ -120,13 +125,15 @@
 
   <Panes bind:mode={paneMode} pdfLabel={`${resource.file_path ? 'pdf' : resource.url ? 'source' : 'content'}`}>
     {#snippet pdf()}<PdfPane resource={resource!} bind:scroll={pdfScroll} />{/snippet}
-    {#snippet notes()}<NotesPane {rid} note={primaryNote} oncreated={onNoteCreated} onupdated={onNoteUpdated} />{/snippet}
+    {#snippet notesPane()}<NotesPane {rid} notes={notes} oncreated={onNoteCreated} onupdated={onNoteUpdated} ondeleted={onNoteDeleted} />{/snippet}
   </Panes>
 
   <div class="reader-foot">
     <a href="/resources/{rid}/notes/new" class="muted">+ new note</a>
     <span class="dim">·</span>
     <a href="/resources/{rid}/edit" class="muted">edit metadata</a>
+    <span class="dim">·</span>
+    <button class="link-btn muted" onclick={reextract} disabled={reextracting}>{reextracting ? 'reextracting…' : 'reextract'}</button>
     <span class="dim">·</span>
     <button class="link-btn danger" onclick={deleteResource}>{confirmDelete ? 'confirm delete?' : 'delete'}</button>
   </div>

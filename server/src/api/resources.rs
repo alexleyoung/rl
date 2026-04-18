@@ -223,6 +223,16 @@ pub async fn get_content(
     })))
 }
 
+pub async fn reextract(
+    State(s): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, AppError> {
+    let r = resource::get(&s.pool, id).await?.ok_or(AppError::NotFound)?;
+    reading::delete_for_resource(&s.pool, id).await.ok();
+    spawn_indexing(&s, id, r.file_path.as_deref(), &r.kind, r.url.as_deref());
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub async fn set_tags(
     State(s): State<AppState>,
     Path(id): Path<i64>,

@@ -86,6 +86,9 @@ export const api = {
   markRead: (id: number) =>
     req<void>(`/resources/${id}/read`, { method: 'POST' }),
 
+  reextract: (id: number) =>
+    req<void>(`/resources/${id}/reextract`, { method: 'POST' }),
+
   fileUrl: (id: number) => `${BASE}/resources/${id}/file`,
 
   getContentChunk: (id: number, offset = 0, limit = 200) =>

@@ -8,7 +8,6 @@ use serde::Deserialize;
 pub enum PdfBlock {
     Heading { level: u8, text: String },
     Paragraph { text: String },
-    Image { data: String, ext: String, width: u32, height: u32 },
 }
 
 #[derive(Debug, Deserialize)]
