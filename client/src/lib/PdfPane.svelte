@@ -1,8 +1,11 @@
 <script lang="ts">
   import { api, type ResourceDto, type ReadingContentChunkDto } from '$lib/api';
 
-  interface Props { resource: ResourceDto }
-  let { resource }: Props = $props();
+  interface Props {
+    resource: ResourceDto;
+    scroll?: (delta: number) => void;
+  }
+  let { resource, scroll = $bindable() }: Props = $props();
 
   type Meta = {
     status: string;
@@ -90,7 +93,11 @@
     const s = extractedEl.closest('.pane-body') as HTMLElement | null;
     scroller = s;
     s?.addEventListener('scroll', onScroll, { passive: true });
-    return () => s?.removeEventListener('scroll', onScroll);
+    scroll = (delta: number) => s?.scrollBy({ top: delta, behavior: 'smooth' });
+    return () => {
+      s?.removeEventListener('scroll', onScroll);
+      scroll = undefined;
+    };
   });
 
   let isPdf = $derived(Boolean(resource.file_path && resource.file_path.toLowerCase().endsWith('.pdf')));

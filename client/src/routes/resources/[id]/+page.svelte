@@ -52,6 +52,9 @@
   function onNoteCreated(n: NoteDto) { notes = [...notes, n]; }
   function onNoteUpdated(n: NoteDto) { notes = notes.map(x => x.id === n.id ? n : x); }
 
+  let pdfScroll: ((delta: number) => void) | undefined = $state();
+  const SCROLL_STEP = 300;
+
   $effect(() => {
     const id = rid;
     pageActions.set([
@@ -67,6 +70,8 @@
       'toggle pdf pane':   togglePdf,
       'toggle notes pane': toggleNotes,
       'swap panes':        () => { paneMode = paneMode === 'both' ? 'pdf-only' : paneMode === 'pdf-only' ? 'notes-only' : 'both'; },
+      'scroll forward':    () => pdfScroll?.(SCROLL_STEP),
+      'scroll backward':   () => pdfScroll?.(-SCROLL_STEP),
     });
     return () => { pageActions.set([]); pageHandlers.set({}); };
   });
@@ -114,7 +119,7 @@
   </div>
 
   <Panes bind:mode={paneMode} pdfLabel={`${resource.file_path ? 'pdf' : resource.url ? 'source' : 'content'}`}>
-    {#snippet pdf()}<PdfPane resource={resource!} />{/snippet}
+    {#snippet pdf()}<PdfPane resource={resource!} bind:scroll={pdfScroll} />{/snippet}
     {#snippet notes()}<NotesPane {rid} note={primaryNote} oncreated={onNoteCreated} onupdated={onNoteUpdated} />{/snippet}
   </Panes>
 
