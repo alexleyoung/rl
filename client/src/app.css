@@ -225,6 +225,8 @@ h2.title { font-weight: 700; font-size: 13px; margin: 0 0 14px; }
 .pane {
   display: flex; flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .pane-head {
   display: flex; align-items: center; gap: 8px;
