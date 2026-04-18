@@ -27,6 +27,11 @@ dev:
     DATABASE_URL={{db}} cargo run -p rl-server &
     (cd client && bun run dev); kill %1 2>/dev/null || true
 
+# Kill any running server and client dev processes
+down:
+    pkill -f 'rl-server' 2>/dev/null || true
+    pkill -f 'vite' 2>/dev/null || true
+
 # Run migrations against the local DB
 migrate:
     DATABASE_URL={{db}} cargo sqlx migrate run
