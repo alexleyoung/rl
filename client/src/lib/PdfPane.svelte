@@ -113,11 +113,13 @@
     {#if fetching}<p class="dim">loading more…</p>{/if}
   </div>
 {:else if isPdf && resource.file_path}
-  <iframe
-    class="pdf-iframe"
-    src={api.fileUrl(Number(resource.id))}
-    title="pdf viewer"
-  ></iframe>
+  <div class="iframe-wrap">
+    <iframe
+      class="pdf-iframe"
+      src={api.fileUrl(Number(resource.id))}
+      title="pdf viewer"
+    ></iframe>
+  </div>
 {:else if resource.url}
   <p class="dim">no extracted content yet.</p>
   <p><a href={resource.url} target="_blank" rel="noreferrer">open {resource.url}</a></p>
@@ -126,7 +128,7 @@
 {/if}
 
 <style>
-  :global(.pdf-body) { padding: 0; display: flex; flex-direction: column; }
-  .pdf-iframe { width: 100%; flex: 1; min-height: 400px; border: 0; display: block; }
-  .extracted { max-width: none; padding: 14px 16px; }
+  .iframe-wrap { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .pdf-iframe { width: 100%; flex: 1; border: 0; display: block; }
+  .extracted { max-width: none; }
 </style>
