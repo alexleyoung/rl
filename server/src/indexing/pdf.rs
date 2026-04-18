@@ -3,21 +3,27 @@ use std::sync::Arc;
 use sqlx::SqlitePool;
 use tracing::warn;
 
-use super::{chunk::chunk_text, embed::{reindex_chunks, Embedder}};
+use super::{chunk::chunk_text, embed::{reindex_chunks, Embedder}, pymupdf};
 
 pub async fn index_pdf(pool: &SqlitePool, embedder: Option<Arc<Embedder>>, resource_id: i64, file_path: &str) {
     let path = file_path.to_string();
-    let text = tokio::task::spawn_blocking(move || {
-        let bytes = std::fs::read(&path)?;
-        pdf_extract::extract_text_from_mem(&bytes)
-    })
-    .await;
+    let content = tokio::task::spawn_blocking(move || pymupdf::extract_content(&path)).await;
 
-    let text = match text {
-        Ok(Ok(t)) => t,
-        Ok(Err(e)) => { warn!("pdf-extract failed for {file_path}: {e}"); return; }
+    let content = match content {
+        Ok(Ok(c)) => c,
+        Ok(Err(e)) => { warn!("pymupdf failed for {file_path}: {e}"); return; }
         Err(e) => { warn!("spawn_blocking failed: {e}"); return; }
     };
+
+    // Flatten text blocks for FTS/vector indexing; images are skipped.
+    let text: String = content.pages.iter().enumerate().map(|(i, page)| {
+        let page_text: String = page.blocks.iter().filter_map(|b| match b {
+            pymupdf::PdfBlock::Heading { text, .. } => Some(text.as_str()),
+            pymupdf::PdfBlock::Paragraph { text } => Some(text.as_str()),
+            pymupdf::PdfBlock::Image { .. } => None,
+        }).collect::<Vec<_>>().join("\n");
+        if i == 0 { page_text } else { format!("\n\n{page_text}") }
+    }).collect();
 
     if text.trim().is_empty() {
         return;

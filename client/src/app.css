@@ -225,6 +225,8 @@ h2.title { font-weight: 700; font-size: 13px; margin: 0 0 14px; }
 .pane {
   display: flex; flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .pane-head {
   display: flex; align-items: center; gap: 8px;
@@ -248,7 +250,7 @@ h2.title { font-weight: 700; font-size: 13px; margin: 0 0 14px; }
   font: inherit;
 }
 .pane-head .close:hover { color: var(--ink); }
-.pane-body { padding: 14px 16px; overflow: auto; flex: 1; }
+.pane-body { padding: 14px 16px; overflow: auto; flex: 1; position: relative; }
 
 .pdf-body {
   background: var(--bg-pdf);
@@ -257,7 +259,12 @@ h2.title { font-weight: 700; font-size: 13px; margin: 0 0 14px; }
   color: var(--ink-2);
 }
 .pdf-body p { margin: 0 0 10px; }
-.pdf-body h1, .pdf-body h2, .pdf-body h3 { color: var(--ink); font-weight: 700; margin: 14px 0 6px; font-size: 13px; }
+.pdf-body h1, .pdf-body h2, .pdf-body h3,
+.pdf-body h4, .pdf-body h5, .pdf-body h6 { color: var(--ink); font-weight: 700; margin: 14px 0 6px; font-size: 13px; }
+.pdf-body h2 { font-size: 14px; margin-top: 20px; }
+.pdf-body h3 { margin-top: 16px; }
+.pdf-body hr.page-break { border: none; border-top: 1px dashed var(--line-2); margin: 18px 0; }
+.pdf-body img { max-width: 100%; height: auto; display: block; margin: 10px 0; }
 .pdf-body mark {
   background: var(--hl); color: var(--ink);
   padding: 0 2px; border-bottom: 1px solid var(--hl-b);

@@ -29,7 +29,8 @@ dev:
 
 # Kill any running server and client dev processes
 down:
-    pkill -f 'rl-server' 2>/dev/null || true
+    pkill -f 'target/debug/rl' 2>/dev/null || true
+    pkill -f 'target/release/rl' 2>/dev/null || true
     pkill -f 'vite' 2>/dev/null || true
 
 # Run migrations against the local DB

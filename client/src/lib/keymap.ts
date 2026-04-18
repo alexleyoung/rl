@@ -43,6 +43,8 @@ export const defaultKeymap: Record<string, KeymapEntry> = {
   'highlight selection':{ action: 'highlight selection',bindings: ['⌘⇧H'],     context: 'reader',     group: 'reader' },
   'new note block':     { action: 'new note block',     bindings: ['⌘↵'],      context: 'notes pane', group: 'reader' },
   'jump to outline':    { action: 'jump to outline',    bindings: ['⌘1–9'],    context: 'reader',     group: 'reader' },
+  'scroll forward':     { action: 'scroll forward',     bindings: ['j', 'l'],  context: 'reader',     group: 'reader' },
+  'scroll backward':    { action: 'scroll backward',    bindings: ['h', 'k'],  context: 'reader',     group: 'reader' },
 };
 
 const STORE_KEY = 'rl_keymap';

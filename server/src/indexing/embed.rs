@@ -51,7 +51,10 @@ pub fn cosine(a: &[f32], b: &[f32]) -> f32 {
     if na == 0.0 || nb == 0.0 { 0.0 } else { dot / (na * nb) }
 }
 
+const EMBED_BATCH: usize = 32;
+
 /// Delete all embedding rows for a (source_kind, source_id) pair, then insert fresh rows.
+/// Chunks are embedded in batches of `EMBED_BATCH` to bound peak memory usage.
 pub async fn reindex_chunks(
     pool: &SqlitePool,
     embedder: Arc<Embedder>,
@@ -59,7 +62,6 @@ pub async fn reindex_chunks(
     source_id: i64,
     chunks: Vec<String>,
 ) {
-    // Delete stale
     let _ = sqlx::query("DELETE FROM embeddings WHERE source_kind=? AND source_id=?")
         .bind(source_kind)
         .bind(source_id)
@@ -71,34 +73,43 @@ pub async fn reindex_chunks(
     }
 
     let sk = source_kind.to_string();
-    let vectors = match embedder.embed(chunks.clone()).await {
-        Ok(v) => v,
-        Err(e) => { warn!("embed failed for {sk}/{source_id}: {e}"); return; }
-    };
+    let mut global_idx: i64 = 0;
+    let mut dim: i64 = 0;
 
-    let dim = vectors.first().map(|v| v.len()).unwrap_or(0) as i64;
+    for batch in chunks.chunks(EMBED_BATCH) {
+        let batch_owned: Vec<String> = batch.to_vec();
+        let emb = embedder.clone();
+        let vectors = match emb.embed(batch_owned.clone()).await {
+            Ok(v) => v,
+            Err(e) => { warn!("embed failed for {sk}/{source_id} at idx {global_idx}: {e}"); return; }
+        };
 
-    for (idx, (text, vec)) in chunks.iter().zip(vectors.iter()).enumerate() {
-        let blob = vec_to_blob(vec);
-        let idx = idx as i64;
-        let res = sqlx::query(
-            "INSERT INTO embeddings(source_kind, source_id, chunk_idx, text, dim, vector)
-             VALUES (?, ?, ?, ?, ?, ?)"
-        )
-        .bind(&sk)
-        .bind(source_id)
-        .bind(idx)
-        .bind(text)
-        .bind(dim)
-        .bind(&blob)
-        .execute(pool)
-        .await;
+        if dim == 0 {
+            dim = vectors.first().map(|v| v.len()).unwrap_or(0) as i64;
+        }
 
-        if let Err(e) = res {
-            warn!("embed insert failed for chunk {idx}: {e}");
-            break;
+        for (text, vec) in batch_owned.iter().zip(vectors.iter()) {
+            let blob = vec_to_blob(vec);
+            let res = sqlx::query(
+                "INSERT INTO embeddings(source_kind, source_id, chunk_idx, text, dim, vector)
+                 VALUES (?, ?, ?, ?, ?, ?)"
+            )
+            .bind(&sk)
+            .bind(source_id)
+            .bind(global_idx)
+            .bind(text)
+            .bind(dim)
+            .bind(&blob)
+            .execute(pool)
+            .await;
+
+            if let Err(e) = res {
+                warn!("embed insert failed for chunk {global_idx}: {e}");
+                return;
+            }
+            global_idx += 1;
         }
     }
 
-    info!("embedded {} chunks for {sk}/{source_id}", chunks.len());
+    info!("embedded {} chunks for {sk}/{source_id}", global_idx);
 }
