@@ -12,7 +12,7 @@
   let resource = $state<ResourceDto | null>(null);
   let notes = $state<NoteDto[]>([]);
   let error = $state('');
-  let paneMode = $state<PaneMode>('both');
+  let paneMode = $state<PaneMode>('notes-only');
 
   async function load() {
     try {

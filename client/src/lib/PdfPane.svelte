@@ -19,7 +19,8 @@
   let totalBlocks = $state(0);
   let topPad      = $state(0);
   let botPad      = $state(0);
-  let loading     = $state(true);
+  let enabled     = $state(false);
+  let loading     = $state(false);
   let fetching    = $state(false);
   let error       = $state('');
   let currentId: number | null = null;
@@ -138,7 +139,7 @@
     if (scroller.scrollHeight <= scroller.clientHeight + NEAR) loadForward();
   }
 
-  $effect(() => { if (resource.id) loadFirst(); });
+  $effect(() => { if (resource.id && enabled) loadFirst(); });
 
   $effect(() => {
     if (!wrapEl) return;
@@ -155,7 +156,11 @@
   let isPdf = $derived(Boolean(resource.file_path && resource.file_path.toLowerCase().endsWith('.pdf')));
 </script>
 
-{#if loading}
+{#if !enabled}
+  <p class="dim load-prompt">
+    <button onclick={() => { enabled = true; }}>load reader</button>
+  </p>
+{:else if loading}
   <p class="dim">loading…</p>
 {:else if error}
   <p class="flash err">{error}</p>
@@ -190,4 +195,7 @@
   .pdf-iframe  { width: 100%; flex: 1; border: 0; display: block; }
   .extracted   { max-width: none; }
   .fetching    { text-align: center; padding: 8px 0; }
+  .load-prompt { display: flex; align-items: center; height: 100%; justify-content: center; }
+  .load-prompt button { color: var(--accent); cursor: pointer; font: inherit; background: none; border: none; padding: 0; }
+  .load-prompt button:hover { text-decoration: underline; }
 </style>
