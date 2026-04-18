@@ -12,14 +12,9 @@ pub async fn extract(
     Json(input): Json<ExtractInputDto>,
 ) -> Result<Json<MetadataDto>, AppError> {
     if let Some(path) = input.file_path {
-        let meta = tokio::task::spawn_blocking(move || {
-            match std::fs::read(&path) {
-                Ok(bytes) => extract_pdf_meta(&bytes),
-                Err(_) => MetadataDto::default(),
-            }
-        })
-        .await
-        .unwrap_or_default();
+        let meta = tokio::task::spawn_blocking(move || extract_pdf_meta(&path))
+            .await
+            .unwrap_or_default();
         return Ok(Json(meta));
     }
 

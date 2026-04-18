@@ -1,55 +1,15 @@
 use scraper::{Html, Selector};
 
 use crate::api::dto::MetadataDto;
+use crate::indexing::pymupdf;
 
 // ─── PDF ─────────────────────────────────────────────────────────────────────
 
-pub fn extract_pdf_meta(bytes: &[u8]) -> MetadataDto {
-    let doc = match lopdf::Document::load_mem(bytes) {
-        Ok(d) => d,
-        Err(_) => return MetadataDto::default(),
-    };
-
-    let info = match doc.trailer.get(b"Info") {
-        Ok(obj) => match doc.dereference(obj) {
-            Ok((_, lopdf::Object::Dictionary(d))) => d,
-            _ => return MetadataDto::default(),
-        },
-        Err(_) => return MetadataDto::default(),
-    };
-
-    let title = pdf_string(info.get(b"Title").ok());
-    let author = pdf_string(info.get(b"Author").ok());
-    let description = pdf_string(info.get(b"Subject").ok());
-
-    MetadataDto { title, author, description }
-}
-
-/// Decode a lopdf string object: UTF-16BE if BOM present, else UTF-8/Latin-1.
-fn pdf_string(obj: Option<&lopdf::Object>) -> Option<String> {
-    let bytes = match obj? {
-        lopdf::Object::String(b, _) => b,
-        _ => return None,
-    };
-    if bytes.is_empty() {
-        return None;
+pub fn extract_pdf_meta(file_path: &str) -> MetadataDto {
+    match pymupdf::extract_meta(file_path) {
+        Ok(m) => MetadataDto { title: m.title, author: m.author, description: m.description },
+        Err(_) => MetadataDto::default(),
     }
-    let s = if bytes.starts_with(&[0xFE, 0xFF]) {
-        // UTF-16BE with BOM
-        let words: Vec<u16> = bytes[2..]
-            .chunks(2)
-            .map(|c| u16::from_be_bytes([c[0], c.get(1).copied().unwrap_or(0)]))
-            .collect();
-        String::from_utf16_lossy(&words).to_string()
-    } else {
-        // Try UTF-8, fall back to Latin-1
-        match std::str::from_utf8(bytes) {
-            Ok(s) => s.to_string(),
-            Err(_) => bytes.iter().map(|&b| b as char).collect(),
-        }
-    };
-    let s = s.trim().to_string();
-    if s.is_empty() { None } else { Some(s) }
 }
 
 // ─── URL ─────────────────────────────────────────────────────────────────────

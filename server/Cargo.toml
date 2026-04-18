@@ -39,9 +39,6 @@ chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# PDF extraction
-pdf-extract = "0.7"
-lopdf = "0.34"
 
 # MIME type guessing
 mime_guess = "2"
